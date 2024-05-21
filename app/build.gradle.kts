@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
+    alias(libs.plugins.undercouchDownload)
 }
 
 android {
@@ -45,6 +46,10 @@ android {
         }
     }
 }
+
+project.ext["ASSET_DIR"] = "$projectDir/src/main/assets"
+
+apply(from = "downloadModel.gradle")
 
 dependencies {
 

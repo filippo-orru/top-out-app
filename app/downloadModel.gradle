@@ -1,0 +1,13 @@
+tasks.register('downloadInteractiveSegmentationModel', Download) {
+  src 'https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/1/magic_touch.tflite'
+  dest project.ext.ASSET_DIR + '/interactive_segmentation_model.tflite'
+  overwrite false
+}
+tasks.register('downloadPoseLandmarkerModelFull', Download) {
+  src 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task'
+  dest project.ext.ASSET_DIR + '/pose_landmarker_full.task'
+  overwrite false
+}
+
+preBuild.dependsOn downloadInteractiveSegmentationModel
+preBuild.dependsOn downloadPoseLandmarkerModelFull
