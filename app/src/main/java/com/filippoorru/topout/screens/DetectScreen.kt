@@ -12,7 +12,9 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,7 +32,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
@@ -46,6 +47,7 @@ import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import kotlin.jvm.optionals.getOrNull
+import kotlin.math.min
 
 
 class LastPose(
@@ -84,7 +86,7 @@ fun DetectScreen(navController: NavController) {
 
     val imageCounter = remember { mutableIntStateOf(0) }
 
-    val segmentationPoint = Offset(0.5f, 0.9f)
+    val segmentationPoint = Offset(0.5f, 0.5f)
 
     fun onNewImage(imageProxy: ImageProxy) {
         val imageCount = imageCounter.intValue
@@ -118,7 +120,9 @@ fun DetectScreen(navController: NavController) {
     val lensFacing = remember { CameraSelector.LENS_FACING_BACK }
     val lifecycleOwner = LocalLifecycleOwner.current
     val previewView = remember {
-        PreviewView(context)
+        PreviewView(context).apply {
+            scaleType = PreviewView.ScaleType.FIT_CENTER
+        }
     }
     val imageAnalysis = remember {
         ImageAnalysis.Builder()
@@ -164,69 +168,88 @@ fun DetectScreen(navController: NavController) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         Surface(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .height(IntrinsicSize.Max)
+                .align(Alignment.Center),
             color = MaterialTheme.colorScheme.background
         ) {
-            AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
-        }
-        val lastPose = lastPoseState.value?.result
-        if (lastPose == null) {
-            Text(
-                text = "No result",
-                modifier = Modifier.align(Alignment.Center),
-                color = Color.White
-            )
-        } else {
-            Surface(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .align(Alignment.Center),
-                color = Color.Black.copy(alpha = if (lastPose.landmarks().isNotEmpty()) 0.15f else 0.0f),
-            ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val height = size.height
-                    val width = size.width
+            AndroidView(factory = { previewView })
+            val lastPose = lastPoseState.value?.result
+            if (lastPose == null) {
+                Text(
+                    text = "No result",
+                    modifier = Modifier.align(Alignment.Center),
+                    color = Color.White
+                )
+            } else {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    color = Color.Black.copy(alpha = if (lastPose.landmarks().isNotEmpty()) 0.15f else 0.0f),
+                ) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val height = size.height
+                        val width = size.width
 
-                    // Draw the pose
-                    lastPose.landmarks().forEach { landmarks ->
-                        landmarks.forEach { landmark ->
-                            drawCircle(
-                                color = Color.Red,
-                                center = Offset((1 - landmark.y()) * size.width, landmark.x() * size.height),
-                                radius = 8f
+                        // Draw the pose
+                        lastPose.landmarks().forEach { landmarks ->
+                            landmarks.forEach { landmark ->
+                                drawCircle(
+                                    color = Color.Red,
+                                    center = Offset((1 - landmark.y()) * size.width, landmark.x() * size.height),
+                                    radius = 8f
+                                )
+                            }
+                        }
+
+                        // Draw the segmentation image mask
+                        val lastSegmentation = lastSegmentationState.value?.result?.categoryMask()?.getOrNull()
+                        if (lastSegmentation != null) {
+                            val byteBuffer = ByteBufferExtractor.extract(lastSegmentation)
+                            val imgWidth = lastSegmentation.width
+                            val imgHeight = lastSegmentation.height
+
+                            val pixels = IntArray(byteBuffer.capacity())
+                            for (i in pixels.indices) {
+                                // No idea why the image is rotated -90 degrees
+                                val (x, y) = i / imgWidth to imgHeight - i % imgHeight - 1
+                                val byte = byteBuffer.get(x + imgWidth * y)
+                                val color: Int = if (byte.toBoolean()) android.graphics.Color.TRANSPARENT else android.graphics.Color.RED
+                                pixels[i] = color
+                            }
+
+                            @Suppress("UnnecessaryVariable", "RedundantSuppression")
+                            val newWidth = imgHeight
+
+                            @Suppress("UnnecessaryVariable", "RedundantSuppression")
+                            val newHeight = imgWidth
+
+                            val scaleFactor =
+                                min(width * 1f / newWidth, height * 1f / newHeight)
+                            val scaleWidth = (newWidth * scaleFactor).toInt()
+                            val scaleHeight = (newHeight * scaleFactor).toInt()
+
+                            drawImage(
+                                Bitmap.createScaledBitmap(
+                                    Bitmap.createBitmap(pixels, newWidth, newHeight, Bitmap.Config.ARGB_8888),
+                                    scaleWidth, scaleHeight, false
+                                ).asImageBitmap(),
+                                alpha = 0.33f,
                             )
                         }
+
                     }
-
-                    // Draw the segmentation image mask
-                    val lastSegmentation = lastSegmentationState.value?.result?.categoryMask()?.getOrNull()
-                    if (lastSegmentation != null) {
-                        val byteBuffer = ByteBufferExtractor.extract(lastSegmentation)
-                        val pixels = IntArray(byteBuffer.capacity())
-                        for (i in pixels.indices) {
-                            val byte = byteBuffer.get(i)
-                            val color = if (byte.toBoolean()) android.graphics.Color.RED else android.graphics.Color.TRANSPARENT
-                            pixels[i] = color
-                        }
-
-                        drawImage(
-                            Bitmap.createBitmap(pixels, lastSegmentation.width, lastSegmentation.height, Bitmap.Config.ARGB_8888)
-                                .asImageBitmap(),
-                            alpha = 0.3f,
-                            srcSize = IntSize(width.toInt(), height.toInt())
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Text(
+                            "Landmarks: ${lastPose.landmarks().size}",
+                            Modifier.align(Alignment.BottomCenter),
+                            color = Color.White
                         )
                     }
-
-                }
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Text(
-                        "Landmarks: ${lastPose.landmarks().size}",
-                        Modifier.align(Alignment.BottomCenter),
-                        color = Color.White
-                    )
                 }
             }
         }
+
     }
 }
 
