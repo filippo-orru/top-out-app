@@ -66,6 +66,56 @@ class LastSegmentation(
     val timestamp: Long get() = result.timestampMs()
 }
 
+enum class ClimbingState {
+    NotDetected,
+    Idle,
+    Climbing,
+}
+
+@Suppress("ConstPropertyName")
+object Landmark {
+    object Foot {
+        const val LeftHeel = 29
+        const val RightHeel = 30
+    }
+}
+
+fun updateClimbingState(
+    climbingState: ClimbingState,
+    pose: PoseLandmarkerResult?,
+    segmentation: ImageSegmenterResult?
+): ClimbingState {
+    if (pose == null || segmentation == null) {
+        return ClimbingState.NotDetected
+    }
+
+    // If foot landmark is within the floor segmentation mask, then the user is on the floor
+
+    val person = pose.landmarks().firstOrNull() ?: return ClimbingState.NotDetected
+
+    val floorImage = segmentation.categoryMask().getOrNull() ?: return ClimbingState.NotDetected
+    val floor = run {
+        val byteBuffer = ByteBufferExtractor.extract(floorImage)
+        val pixels = ByteArray(byteBuffer.capacity())
+        byteBuffer.get(pixels)
+        pixels
+    }
+
+    val footLandmarks = listOf(
+        person[Landmark.Foot.LeftHeel],
+        person[Landmark.Foot.RightHeel]
+    )
+
+    val zero = 0.toByte()
+    return if (
+        footLandmarks.any { floor[it.y().toInt() * floorImage.width + it.x().toInt()] != zero }
+    ) {
+        ClimbingState.Idle
+    } else {
+        ClimbingState.Climbing
+    }
+}
+
 @Composable
 fun DetectScreen(navController: NavController) {
     suspend fun Context.getCameraProvider(): ProcessCameraProvider = suspendCoroutine { continuation ->
@@ -90,7 +140,9 @@ fun DetectScreen(navController: NavController) {
 
     val imageCounter = remember { mutableIntStateOf(0) }
 
-    val segmentationPoint = remember { mutableStateOf(Offset(0.5f, 0.5f)) }
+    val segmentationPoint = remember { mutableStateOf(Offset(0.5f, 0.9f)) }
+
+    val climbingState = remember { mutableStateOf(ClimbingState.NotDetected) }
 
     fun onNewImage(imageProxy: ImageProxy) {
         val imageCount = imageCounter.intValue
@@ -110,11 +162,17 @@ fun DetectScreen(navController: NavController) {
                         bitmap,
                         InteractiveSegmenter.RegionOfInterest.create(
                             NormalizedKeypoint.create(
-                                segmentationPoint.value.x * imageProxy.width,
-                                segmentationPoint.value.y * imageProxy.height
+                                segmentationPoint.value.y * imageProxy.height,
+                                imageProxy.width - segmentationPoint.value.x * imageProxy.width,
                             ),
                         ),
                     )
+                )
+
+                climbingState.value = updateClimbingState(
+                    climbingState.value,
+                    lastPoseState.value?.result,
+                    lastSegmentationState.value?.result
                 )
             }
         }
@@ -210,12 +268,25 @@ fun DetectScreen(navController: NavController) {
                     val width = size.width
 
                     lastPose?.landmarks()?.forEach { people ->
-                        people.forEach { landmark ->
-                            drawCircle(
-                                color = Color.Red,
-                                center = Offset((1 - landmark.y()) * size.width, landmark.x() * size.height),
-                                radius = 8f
-                            )
+                        people.forEachIndexed { i, landmark ->
+                            if (i == Landmark.Foot.LeftHeel || i == Landmark.Foot.RightHeel) {
+                                drawCircle(
+                                    color = Color.White,
+                                    center = Offset((1 - landmark.y()) * size.width, landmark.x() * size.height),
+                                    radius = 10f
+                                )
+                                drawCircle(
+                                    color = Color.Red,
+                                    center = Offset((1 - landmark.y()) * size.width, landmark.x() * size.height),
+                                    radius = 6f
+                                )
+                            } else {
+                                drawCircle(
+                                    color = Color.Red,
+                                    center = Offset((1 - landmark.y()) * size.width, landmark.x() * size.height),
+                                    radius = 8f
+                                )
+                            }
                         }
                     }
 
@@ -229,6 +300,7 @@ fun DetectScreen(navController: NavController) {
                             val byteBuffer = ByteBufferExtractor.extract(lastSegmentation)
                             val pixels = IntArray(byteBuffer.capacity())
                             for (i in pixels.indices) {
+                                // TODO can this be optimized?
                                 val byte = byteBuffer.get(i)
                                 val color: Int =
                                     if (byte.toBoolean()) android.graphics.Color.TRANSPARENT else android.graphics.Color.RED
@@ -264,7 +336,8 @@ fun DetectScreen(navController: NavController) {
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     Text(
-                        "Landmarks: ${lastPose?.landmarks()?.size ?: "null"}, Segmentation: ${segmentationPoint.value}",
+                        "${climbingState.value}\n" +
+                                "Landmarks: ${lastPose?.landmarks()?.size ?: "null"}, Segmentation: ${segmentationPoint.value}",
                         Modifier.align(Alignment.BottomCenter),
                         color = Color.White
                     )
