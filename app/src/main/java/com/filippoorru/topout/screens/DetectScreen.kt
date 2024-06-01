@@ -2,6 +2,7 @@ package com.filippoorru.topout.screens
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -11,9 +12,12 @@ import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -30,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
@@ -47,7 +52,6 @@ import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import kotlin.jvm.optionals.getOrNull
-import kotlin.math.min
 
 
 class LastPose(
@@ -86,7 +90,7 @@ fun DetectScreen(navController: NavController) {
 
     val imageCounter = remember { mutableIntStateOf(0) }
 
-    val segmentationPoint = Offset(0.5f, 0.5f)
+    val segmentationPoint = remember { mutableStateOf(Offset(0.5f, 0.5f)) }
 
     fun onNewImage(imageProxy: ImageProxy) {
         val imageCount = imageCounter.intValue
@@ -105,7 +109,10 @@ fun DetectScreen(navController: NavController) {
                     detector.segmentation.segment(
                         bitmap,
                         InteractiveSegmenter.RegionOfInterest.create(
-                            NormalizedKeypoint.create(segmentationPoint.x, segmentationPoint.y),
+                            NormalizedKeypoint.create(
+                                segmentationPoint.value.x * imageProxy.width,
+                                segmentationPoint.value.y * imageProxy.height
+                            ),
                         ),
                     )
                 )
@@ -169,87 +176,101 @@ fun DetectScreen(navController: NavController) {
     Box(modifier = Modifier.fillMaxSize()) {
         Surface(
             modifier = Modifier
+                .fillMaxWidth()
                 .height(IntrinsicSize.Max)
                 .align(Alignment.Center),
             color = MaterialTheme.colorScheme.background
         ) {
-            AndroidView(factory = { previewView })
-            val lastPose = lastPoseState.value?.result
-            if (lastPose == null) {
-                Text(
-                    text = "No result",
-                    modifier = Modifier.align(Alignment.Center),
-                    color = Color.White
-                )
-            } else {
-                Surface(
+            AndroidView(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(3f / 4f),
+                factory = { previewView }
+            )
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .align(Alignment.Center),
+                color = Color.Black.copy(alpha = 0.15f),
+            ) {
+                val lastPose = lastPoseState.value?.result
+                Canvas(
                     modifier = Modifier
-                        .fillMaxSize(),
-                    color = Color.Black.copy(alpha = if (lastPose.landmarks().isNotEmpty()) 0.15f else 0.0f),
-                ) {
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        val height = size.height
-                        val width = size.width
-
-                        // Draw the pose
-                        lastPose.landmarks().forEach { landmarks ->
-                            landmarks.forEach { landmark ->
-                                drawCircle(
-                                    color = Color.Red,
-                                    center = Offset((1 - landmark.y()) * size.width, landmark.x() * size.height),
-                                    radius = 8f
-                                )
-                            }
-                        }
-
-                        // Draw the segmentation image mask
-                        val lastSegmentation = lastSegmentationState.value?.result?.categoryMask()?.getOrNull()
-                        if (lastSegmentation != null) {
-                            val byteBuffer = ByteBufferExtractor.extract(lastSegmentation)
-                            val imgWidth = lastSegmentation.width
-                            val imgHeight = lastSegmentation.height
-
-                            val pixels = IntArray(byteBuffer.capacity())
-                            for (i in pixels.indices) {
-                                // No idea why the image is rotated -90 degrees
-                                val (x, y) = i / imgWidth to imgHeight - i % imgHeight - 1
-                                val byte = byteBuffer.get(x + imgWidth * y)
-                                val color: Int = if (byte.toBoolean()) android.graphics.Color.TRANSPARENT else android.graphics.Color.RED
-                                pixels[i] = color
-                            }
-
-                            @Suppress("UnnecessaryVariable", "RedundantSuppression")
-                            val newWidth = imgHeight
-
-                            @Suppress("UnnecessaryVariable", "RedundantSuppression")
-                            val newHeight = imgWidth
-
-                            val scaleFactor =
-                                min(width * 1f / newWidth, height * 1f / newHeight)
-                            val scaleWidth = (newWidth * scaleFactor).toInt()
-                            val scaleHeight = (newHeight * scaleFactor).toInt()
-
-                            drawImage(
-                                Bitmap.createScaledBitmap(
-                                    Bitmap.createBitmap(pixels, newWidth, newHeight, Bitmap.Config.ARGB_8888),
-                                    scaleWidth, scaleHeight, false
-                                ).asImageBitmap(),
-                                alpha = 0.33f,
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onTap = {
+                                    segmentationPoint.value = Offset(it.x / size.width, it.y / size.height)
+                                }
                             )
                         }
+                ) {
+                    val height = size.height
+                    val width = size.width
 
+                    lastPose?.landmarks()?.forEach { people ->
+                        people.forEach { landmark ->
+                            drawCircle(
+                                color = Color.Red,
+                                center = Offset((1 - landmark.y()) * size.width, landmark.x() * size.height),
+                                radius = 8f
+                            )
+                        }
                     }
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Text(
-                            "Landmarks: ${lastPose.landmarks().size}",
-                            Modifier.align(Alignment.BottomCenter),
-                            color = Color.White
+
+                    // Draw the segmentation image mask
+                    val lastSegmentation = lastSegmentationState.value?.result?.categoryMask()?.getOrNull()
+                    if (lastSegmentation != null) {
+                        val imgWidth = lastSegmentation.width
+                        val imgHeight = lastSegmentation.height
+
+                        val pixels = run {
+                            val byteBuffer = ByteBufferExtractor.extract(lastSegmentation)
+                            val pixels = IntArray(byteBuffer.capacity())
+                            for (i in pixels.indices) {
+                                val byte = byteBuffer.get(i)
+                                val color: Int =
+                                    if (byte.toBoolean()) android.graphics.Color.TRANSPARENT else android.graphics.Color.RED
+                                pixels[i] = color
+                            }
+                            pixels
+                        }
+
+                        drawImage(
+                            Bitmap.createScaledBitmap(
+                                Bitmap.createBitmap(
+                                    Bitmap.createBitmap(pixels, imgWidth, imgHeight, Bitmap.Config.ARGB_8888),
+                                    0, 0, imgWidth, imgHeight, Matrix().apply { postRotate(90f) }, true
+                                ),
+                                width.toInt(), height.toInt(), true
+                            ).asImageBitmap(),
+                            alpha = 0.33f,
                         )
                     }
+
+                    // Draw the segmentation point
+                    drawCircle(
+                        color = Color.White,
+                        center = Offset(segmentationPoint.value.x * width, segmentationPoint.value.y * height),
+                        radius = 7f
+                    )
+                    drawCircle(
+                        color = Color.Blue,
+                        center = Offset(segmentationPoint.value.x * width, segmentationPoint.value.y * height),
+                        radius = 4f
+                    )
+                }
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Text(
+                        "Landmarks: ${lastPose?.landmarks()?.size ?: "null"}, Segmentation: ${segmentationPoint.value}",
+                        Modifier.align(Alignment.BottomCenter),
+                        color = Color.White
+                    )
                 }
             }
         }
-
     }
 }
 
