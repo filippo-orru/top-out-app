@@ -12,13 +12,15 @@ import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Arrangement.Center
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
@@ -84,21 +87,17 @@ object Landmark {
 const val zero = 0.toByte()
 
 fun trackerPositionIsInMask(
-    rightNormalized: Double,
-    bottomNormalized: Double,
+    topRelative: Double,
+    rightRelative: Double,
     mask: ByteArray,
     width: Int,
     height: Int,
 ): Boolean {
-    // Need to map the x and y coordinates from the pose coordinates (portrait) to the segmentation image (rotated 90deg, landscape)
-    //val xRotated = width * (1 - y)
-    //val yRotated = height * x
-    //val i = yRotated.toInt() * width + xRotated.toInt()
+    // No idea why I have to do these rotation gymnastics but whatever, it works.
+    val x = topRelative * width
+    val y = (1 - rightRelative) * height
 
-    val xAdjusted = (1 - rightNormalized) * width
-    val yAdjusted = (1 - bottomNormalized) * height
-
-    val i = yAdjusted.toInt() * width + xAdjusted.toInt()
+    val i = y.toInt() * width + x.toInt()
     return i > 0 && i < mask.size && mask[i] == zero
 }
 
@@ -126,10 +125,9 @@ fun updateClimbingState(
     val trackerPositions = getTrackerPositions(person)
 
     return if (
-    // More than half of the tracker positions are on the floor
         trackerPositions.count { (x, y) ->
             trackerPositionIsInMask(x, y, floor, floorImage.width, floorImage.height)
-        } > trackerPositions.size / 2
+        } < trackerPositions.size / 2
     ) {
         ClimbingState.Climbing
     } else {
@@ -142,13 +140,13 @@ private fun getTrackerPositions(person: List<NormalizedLandmark>): List<Pair<Dou
         person[Landmark.Foot.LeftHeel],
         person[Landmark.Foot.RightHeel]
     ).flatMap { landmark ->
-        val distance = 0.04
+        val distance = 0.055
         val aspect = 4 / 3.0
-        listOf(0.1, 0.25, 0.4, 0.6, 0.75, 0.9).map { angle ->
+        listOf(0.3, 0.45, 0.65, 0.7).map { angle ->
             val dx = cos(angle * Math.PI * 2) * distance * aspect
-            val dy = sin(angle * Math.PI * 2) * distance / aspect
-            val x = landmark.x() + dy // Image is rotated 90 degrees
-            val y = landmark.y() + dx
+            val dy = sin(angle * Math.PI * 2) * distance
+            val x = landmark.x() - dx
+            val y = landmark.y() + dy
             x to y
         }
     }
@@ -284,115 +282,170 @@ fun DetectScreen(navController: NavController) {
         preview.setSurfaceProvider(previewView.surfaceProvider)
     }
 
-    Surface(
+    Box(
         modifier = Modifier.fillMaxSize(),
-        color = Color.Black,
     ) {
-        Box(
+        Surface(
             modifier = Modifier.fillMaxSize(),
+            color = Color(0xFF121212),
         ) {
-            Surface(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Max)
-                    .align(Alignment.Center),
-                color = MaterialTheme.colorScheme.background
+                    .fillMaxSize(),
+                verticalArrangement = Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                AndroidView(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(3f / 4f),
-                    factory = { previewView }
-                )
-
-                Surface(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .align(Alignment.Center),
-                    color = Color.Black.copy(alpha = 0.15f),
+                        .height(IntrinsicSize.Max),
                 ) {
-                    val lastPose = lastPoseState.value?.result
+                    AndroidView(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(3f / 4f),
+                        factory = { previewView }
+                    )
 
-                    val lastSegmentation = lastSegmentationState.value?.result?.categoryMask()?.getOrNull()
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .align(Alignment.Center),
+                        color = Color.Black.copy(alpha = 0.15f),
+                    ) {
+                        val lastPose = lastPoseState.value?.result
 
-                    if (lastPose != null && lastSegmentation != null) {
-                        val imgWidth = lastSegmentation.width
-                        val imgHeight = lastSegmentation.height
+                        val lastSegmentation = lastSegmentationState.value?.result?.categoryMask()?.getOrNull()
 
-                        val byteArray = ByteBufferExtractor.extract(lastSegmentation).let { byteBuffer ->
-                            val byteArray = ByteArray(byteBuffer.capacity())
-                            byteBuffer.get(byteArray)
-                            byteArray
-                        }
+                        if (lastPose != null && lastSegmentation != null) {
+                            val imgWidth = lastSegmentation.width
+                            val imgHeight = lastSegmentation.height
 
-                        val pixels = IntArray(byteArray.size)
-                        for (i in pixels.indices) {
-                            // TODO can this be optimized?
-                            val byte = byteArray[i]
-                            val color: Int =
-                                if (byte.toBoolean()) android.graphics.Color.TRANSPARENT else android.graphics.Color.RED
-                            pixels[i] = color
-                        }
+                            val byteArray = ByteBufferExtractor.extract(lastSegmentation).let { byteBuffer ->
+                                val byteArray = ByteArray(byteBuffer.capacity())
+                                byteBuffer.get(byteArray)
+                                byteArray
+                            }
 
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            val height = size.height
-                            val width = size.width
+                            val pixels = IntArray(byteArray.size)
+                            for (i in pixels.indices) {
+                                // TODO can this be optimized?
+                                val byte = byteArray[i]
+                                val color: Int =
+                                    if (byte.toBoolean()) android.graphics.Color.TRANSPARENT else android.graphics.Color.RED
+                                pixels[i] = color
+                            }
 
-                            lastPose.landmarks().forEach { person ->
-                                val trackerPositions = getTrackerPositions(person)
-                                trackerPositions.forEach { (x, y) ->
-                                    if (trackerPositionIsInMask(x, y, byteArray, imgWidth, imgHeight)) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                val height = size.height
+                                val width = size.width
+
+                                lastPose.landmarks().forEach { person ->
+                                    listOf(
+                                        person[Landmark.Foot.LeftHeel],
+                                        person[Landmark.Foot.RightHeel]
+                                    ).forEach { landmark ->
+                                        val center = Offset((1 - landmark.y()) * size.width, landmark.x() * size.height)
+                                        // TODO function to transform landmark position into canvas position and back
                                         drawCircle(
-                                            color = Color.Red,
-                                            center = Offset(((1 - y) * size.width).toFloat(), (x * size.height).toFloat()),
-                                            radius = 8f
+                                            color = Color.White,
+                                            center = center,
+                                            radius = 10f
                                         )
-                                    } else {
                                         drawCircle(
                                             color = Color.Green,
-                                            center = Offset(((1 - y) * size.width).toFloat(), (x * size.height).toFloat()),
-                                            radius = 8f
+                                            center = center,
+                                            radius = 7f
                                         )
                                     }
+
+                                    val trackerPositions = getTrackerPositions(person)
+                                    trackerPositions.forEach { (x, y) ->
+                                        val isOnGround = trackerPositionIsInMask(x, y, byteArray, imgWidth, imgHeight)
+                                        val center = Offset(((1 - y) * size.width).toFloat(), (x * size.height).toFloat())
+                                        drawCircle(
+                                            color = Color.White,
+                                            center = center,
+                                            radius = 7f
+                                        )
+                                        if (!isOnGround) {
+                                            drawCircle(
+                                                color = Color.Red,
+                                                center = center,
+                                                radius = 5f
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Draw the segmentation image mask
+
+
+                                drawImage(
+                                    Bitmap.createScaledBitmap(
+                                        Bitmap.createBitmap(
+                                            Bitmap.createBitmap(pixels, imgWidth, imgHeight, Bitmap.Config.ARGB_8888),
+                                            0, 0, imgWidth, imgHeight, Matrix().apply { postRotate(90f) }, true
+                                        ),
+                                        width.toInt(), height.toInt(), true
+                                    ).asImageBitmap(),
+                                    alpha = 0.33f,
+                                )
+
+                                // Draw the segmentation points
+                                segmentationPoints.forEach { segmentationPoint ->
+                                    drawCircle(
+                                        color = Color.White,
+                                        center = Offset(segmentationPoint.x * width, segmentationPoint.y * height),
+                                        radius = 7f
+                                    )
+                                    drawCircle(
+                                        color = Color.Blue,
+                                        center = Offset(segmentationPoint.x * width, segmentationPoint.y * height),
+                                        radius = 5f
+                                    )
                                 }
                             }
+                        }
 
-                            // Draw the segmentation image mask
-
-
-                            drawImage(
-                                Bitmap.createScaledBitmap(
-                                    Bitmap.createBitmap(
-                                        Bitmap.createBitmap(pixels, imgWidth, imgHeight, Bitmap.Config.ARGB_8888),
-                                        0, 0, imgWidth, imgHeight, Matrix().apply { postRotate(90f) }, true
-                                    ),
-                                    width.toInt(), height.toInt(), true
-                                ).asImageBitmap(),
-                                alpha = 0.33f,
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                "People: ${lastPose?.landmarks()?.size ?: 0}",
+                                Modifier.align(Alignment.BottomCenter),
+                                color = Color.White
                             )
-
-                            // Draw the segmentation points
-                            segmentationPoints.forEach { segmentationPoint ->
-                                drawCircle(
-                                    color = Color.White,
-                                    center = Offset(segmentationPoint.x * width, segmentationPoint.y * height),
-                                    radius = 7f
-                                )
-                                drawCircle(
-                                    color = Color.Blue,
-                                    center = Offset(segmentationPoint.x * width, segmentationPoint.y * height),
-                                    radius = 4f
-                                )
-                            }
                         }
                     }
+                }
 
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Text(
-                            "${climbingState.value}\nLandmarks: ${lastPose?.landmarks()?.size ?: "null"}",
-                            Modifier.align(Alignment.BottomCenter),
-                            color = Color.White
-                        )
+                Box(Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Center,
+                ) {
+                    when (climbingState.value) {
+                        ClimbingState.NotDetected -> {
+                            Text(
+                                "...",
+                                color = Color.White
+                            )
+                        }
+
+                        ClimbingState.Idle -> {
+                            Text(
+                                "Idle",
+                                color = Color.White
+                            )
+                        }
+
+                        ClimbingState.Climbing -> {
+                            Text(
+                                "🔴 REC",
+                                color = Color.White
+                            )
+                        }
+
                     }
                 }
             }
