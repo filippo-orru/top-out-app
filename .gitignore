@@ -13,3 +13,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+/app/src/main/assets/interactive_segmentation_model.tflite
+/app/src/main/assets/pose_landmarker_full.task
