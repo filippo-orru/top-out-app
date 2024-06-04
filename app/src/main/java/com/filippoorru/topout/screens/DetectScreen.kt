@@ -27,7 +27,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -42,22 +41,26 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.filippoorru.topout.Detector
+import com.filippoorru.topout.utils.OneEuroFilter
 import com.google.mediapipe.framework.image.BitmapImageBuilder
 import com.google.mediapipe.framework.image.ByteBufferExtractor
 import com.google.mediapipe.tasks.components.containers.NormalizedKeypoint
 import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
-import com.google.mediapipe.tasks.core.Delegate
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.imagesegmenter.ImageSegmenterResult
 import com.google.mediapipe.tasks.vision.interactivesegmenter.InteractiveSegmenter
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
+import java.lang.Thread.sleep
+import java.util.concurrent.Executors
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import kotlin.jvm.optionals.getOrNull
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.system.measureTimeMillis
 
 
+// TODO integrate filter for every person->landmark->coordinate. Or maybe just the 2 we need?
 class LastPose(
     val result: PoseLandmarkerResult
 ) {
@@ -67,7 +70,7 @@ class LastPose(
 class LastSegmentation(
     val result: ImageSegmenterResult
 ) {
-    val timestamp: Long get() = result.timestampMs()
+    val timestamp: Long = System.currentTimeMillis()
 }
 
 enum class ClimbingState {
@@ -101,40 +104,6 @@ fun trackerPositionIsInMask(
     return i > 0 && i < mask.size && mask[i] == zero
 }
 
-fun updateClimbingState(
-    climbingState: ClimbingState,
-    pose: PoseLandmarkerResult?,
-    segmentation: ImageSegmenterResult?
-): ClimbingState {
-    if (pose == null || segmentation == null) {
-        return ClimbingState.NotDetected
-    }
-
-    // If foot landmark is within the floor segmentation mask, then the user is on the floor
-
-    val person = pose.landmarks().firstOrNull() ?: return ClimbingState.NotDetected
-
-    val floorImage = segmentation.categoryMask().getOrNull() ?: return ClimbingState.NotDetected
-    val floor = run {
-        val byteBuffer = ByteBufferExtractor.extract(floorImage)
-        val pixels = ByteArray(byteBuffer.capacity())
-        byteBuffer.get(pixels)
-        pixels
-    }
-
-    val trackerPositions = getTrackerPositions(person)
-
-    return if (
-        trackerPositions.count { (x, y) ->
-            trackerPositionIsInMask(x, y, floor, floorImage.width, floorImage.height)
-        } < trackerPositions.size / 2
-    ) {
-        ClimbingState.Climbing
-    } else {
-        ClimbingState.Idle
-    }
-}
-
 private fun getTrackerPositions(person: List<NormalizedLandmark>): List<Pair<Double, Double>> {
     return listOf(
         person[Landmark.Foot.LeftHeel],
@@ -164,17 +133,72 @@ fun DetectScreen(navController: NavController) {
     val lastPoseState: MutableState<LastPose?> = remember { mutableStateOf(null) }
     val lastSegmentationState: MutableState<LastSegmentation?> = remember { mutableStateOf(null) }
 
+    fun onPoseResult(result: PoseLandmarkerResult) {
+        lastPoseState.value = LastPose(result)
+    }
+
     val detector: Detector = remember {
         Detector.create(
             context = context,
             runningMode = RunningMode.LIVE_STREAM,
-            onPoseResult = { result -> lastPoseState.value = LastPose(result) },
-            onSegmentationResult = { result -> /*lastSegmentationState.value = LastSegmentation(result)*/ },
-            delegate = Delegate.CPU
+            onPoseResult = ::onPoseResult,
         )
     }
 
-    val imageCounter = remember { mutableIntStateOf(0) }
+    val climbingState = remember { mutableStateOf(ClimbingState.NotDetected) }
+    fun updateClimbingState() {
+        fun get(): ClimbingState {
+            val pose = lastPoseState.value?.result
+            val segmentation = lastSegmentationState.value?.result
+
+            if (pose == null || segmentation == null) {
+                return ClimbingState.NotDetected
+            }
+
+            // If foot landmark is within the floor segmentation mask, then the user is on the floor
+
+            val person = pose.landmarks().firstOrNull() ?: return ClimbingState.NotDetected
+
+            val floorImage = segmentation.categoryMask().getOrNull() ?: return ClimbingState.NotDetected
+            val floor = run {
+                val byteBuffer = ByteBufferExtractor.extract(floorImage)
+                val pixels = ByteArray(byteBuffer.capacity())
+                byteBuffer.get(pixels)
+                pixels
+            }
+
+            val trackerPositions = getTrackerPositions(person)
+
+            return if (
+                trackerPositions.count { (x, y) ->
+                    trackerPositionIsInMask(x, y, floor, floorImage.width, floorImage.height)
+                } < trackerPositions.size / 2
+            ) {
+                ClimbingState.Climbing
+            } else {
+                ClimbingState.Idle
+            }
+        }
+
+        climbingState.value = get()
+    }
+
+    val poseFilter = remember { OneEuroFilter(0.1) }
+    val poseDurations = remember { mutableListOf<Long>() }
+    fun detectPose(imageProxy: ImageProxy) {
+        val bitmap = BitmapImageBuilder(imageProxy.toBitmap()).build()
+
+        val duration = measureTimeMillis {
+            detector.poseLandmarker.detectAsync(bitmap, imageProxy.imageInfo.timestamp)
+        }
+        poseDurations.add(duration)
+        if (poseDurations.size > 10) {
+            poseDurations.removeAt(0)
+        }
+        updateClimbingState()
+
+        imageProxy.close()
+    }
 
     val segmentationPoints = remember {
         listOf(
@@ -189,48 +213,42 @@ fun DetectScreen(navController: NavController) {
             Offset(0.91f, 0.89f),
         )
     }
-
-    val climbingState = remember { mutableStateOf(ClimbingState.NotDetected) }
-
-    fun onNewImage(imageProxy: ImageProxy) {
-        val imageCount = imageCounter.intValue
+    val segmentationDurations = remember { mutableListOf<Long>() }
+    fun segmentImage(imageProxy: ImageProxy) {
         val lastSegmentation = lastSegmentationState.value
 
-        // TODO only update when the image changes significantly
-        val detectPose = imageCount % 2 == 0
-        val detectSegmentation = lastSegmentation == null || System.currentTimeMillis() - lastSegmentation.timestamp > 1000
+        // TODO only run when the image changes significantly?
+        val timeSinceLastCompleted = System.currentTimeMillis() - (lastSegmentation?.timestamp ?: 0)
+        if (lastSegmentation != null && timeSinceLastCompleted < 1000) {
+            sleep(1000 - timeSinceLastCompleted)
+        }
 
-        if (detectPose || detectSegmentation) {
-            val bitmap = BitmapImageBuilder(imageProxy.toBitmap()).build()
-            if (detectPose) {
-                detector.poseLandmarker.detectAsync(bitmap, imageProxy.imageInfo.timestamp)
-            }
-            if (detectSegmentation) {
-                lastSegmentationState.value = LastSegmentation(
-                    detector.segmentation.segment(
-                        bitmap,
-                        InteractiveSegmenter.RegionOfInterest.create(
-                            segmentationPoints.map { (x, y) ->
-                                NormalizedKeypoint.create(
-                                    y * imageProxy.width,
-                                    imageProxy.height - x * imageProxy.height,
-                                )
-                            },
-                        ),
-                    )
-                )
-
-                climbingState.value = updateClimbingState(
-                    climbingState.value,
-                    lastPoseState.value?.result,
-                    lastSegmentationState.value?.result
-                )
+        val bitmap = BitmapImageBuilder(imageProxy.toBitmap()).build()
+        val duration = measureTimeMillis {
+            val result: ImageSegmenterResult? = detector.segmentation.segment(
+                bitmap,
+                InteractiveSegmenter.RegionOfInterest.create(
+                    segmentationPoints.map { (x, y) ->
+                        NormalizedKeypoint.create(
+                            y * imageProxy.width,
+                            imageProxy.height - x * imageProxy.height,
+                        )
+                    },
+                ),
+            )
+            if (result != null) {
+                lastSegmentationState.value = LastSegmentation(result)
             }
         }
 
-        imageProxy.close()
+        segmentationDurations.add(duration)
+        if (segmentationDurations.size > 10) {
+            segmentationDurations.removeAt(0)
+        }
 
-        imageCounter.intValue = imageCount + 1
+        updateClimbingState()
+
+        imageProxy.close()
     }
 
     val lensFacing = remember { CameraSelector.LENS_FACING_BACK }
@@ -240,27 +258,38 @@ fun DetectScreen(navController: NavController) {
             scaleType = PreviewView.ScaleType.FIT_CENTER
         }
     }
-    val imageAnalysis = remember {
+
+    val poseImageAnalyzer = remember {
         ImageAnalysis.Builder()
-            //.setBackpressureStrategy(ImageAnalysis.STRATEGY_BLOCK_PRODUCER)
-            //.setImageQueueDepth(100)
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .setResolutionSelector(
+                ResolutionSelector.Builder()
+                    .setAllowedResolutionMode(ResolutionSelector.PREFER_CAPTURE_RATE_OVER_HIGHER_RESOLUTION)
+                    .build()
+            )
             .build()
-            .also { imageAnalysis ->
-                imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(context)) { imageProxy ->
-                    onNewImage(imageProxy)
-                }
-            }
+            .apply { setAnalyzer(Executors.newSingleThreadExecutor(), ::detectPose) }
     }
 
-    fun close() {
-        // TODO how to reopen the detector?
-        //detector.close()
-        imageAnalysis.clearAnalyzer()
+    val segmentImageAnalyzer = remember {
+        ImageAnalysis.Builder()
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .setResolutionSelector(
+                ResolutionSelector.Builder()
+                    .setAllowedResolutionMode(ResolutionSelector.PREFER_CAPTURE_RATE_OVER_HIGHER_RESOLUTION)
+                    .build()
+            )
+            .build()
+            .apply { setAnalyzer(Executors.newSingleThreadExecutor(), ::segmentImage) }
     }
 
     // Execute when closing the screen
     DisposableEffect(Unit) {
-        onDispose(::close)
+        onDispose {
+            // TODO how to reopen the detector?
+            //detector.close()
+            segmentImageAnalyzer.clearAnalyzer()
+        }
     }
 
     LaunchedEffect(lensFacing) {
@@ -273,11 +302,13 @@ fun DetectScreen(navController: NavController) {
                     .build()
             )
             .build()
+        val cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
         cameraProvider.bindToLifecycle(
             lifecycleOwner,
-            CameraSelector.Builder().requireLensFacing(lensFacing).build(),
+            cameraSelector,
             preview,
-            imageAnalysis
+            poseImageAnalyzer,
+            segmentImageAnalyzer,
         )
         preview.setSurfaceProvider(previewView.surfaceProvider)
     }
@@ -410,7 +441,9 @@ fun DetectScreen(navController: NavController) {
 
                         Box(modifier = Modifier.fillMaxSize()) {
                             Text(
-                                "People: ${lastPose?.landmarks()?.size ?: 0}",
+                                "People: ${lastPose?.landmarks()?.size ?: 0}\n"
+                                        + " Pose: ${poseDurations.average()}ms\n"
+                                        + " Segmentation: ${segmentationDurations.average()}ms\n",
                                 Modifier.align(Alignment.BottomCenter),
                                 color = Color.White
                             )

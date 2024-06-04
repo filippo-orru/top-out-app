@@ -4,7 +4,6 @@ import android.content.Context
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.core.Delegate
 import com.google.mediapipe.tasks.vision.core.RunningMode
-import com.google.mediapipe.tasks.vision.imagesegmenter.ImageSegmenterResult
 import com.google.mediapipe.tasks.vision.interactivesegmenter.InteractiveSegmenter
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarker
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
@@ -23,13 +22,11 @@ class Detector private constructor(
         fun create(
             context: Context, runningMode: RunningMode,
             onPoseResult: (result: PoseLandmarkerResult) -> Unit,
-            onSegmentationResult: (result: ImageSegmenterResult) -> Unit,
-            delegate: Delegate
         ): Detector {
             fun setUpPoseLandmarker(): PoseLandmarker {
                 // Set general pose landmarker options
                 val baseOptions = BaseOptions.builder()
-                    .setDelegate(delegate) // Use the specified hardware for running the model. Default to CPU
+                    .setDelegate(Delegate.GPU) // Use the specified hardware for running the model. Default to CPU
                     .setModelAssetPath("pose_landmarker_full.task")
                     .build()
 
@@ -54,7 +51,7 @@ class Detector private constructor(
             fun setUpSegmentation(): InteractiveSegmenter {
                 val baseOptions = BaseOptions.builder()
                     .setModelAssetPath("interactive_segmentation_model.tflite")
-                    .setDelegate(delegate)
+                    .setDelegate(Delegate.CPU)
                     .build()
 
                 val optionsBuilder =
@@ -67,7 +64,6 @@ class Detector private constructor(
 
                 val options = optionsBuilder.build()
                 return InteractiveSegmenter.createFromOptions(context, options)
-
             }
 
             return Detector(
