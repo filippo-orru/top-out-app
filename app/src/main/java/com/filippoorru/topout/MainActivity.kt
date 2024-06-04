@@ -7,7 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.filippoorru.topout.screens.DetectScreen
+import com.filippoorru.topout.screens.RecordScreen
 import com.filippoorru.topout.ui.theme.TopOutTheme
 
 class MainActivity : ComponentActivity() {
@@ -26,7 +26,7 @@ fun AppNavigator() {
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = Screen.MainScreen.route) {
         composable(Screen.MainScreen.route) { MainScreen(navController) }
-        composable(Screen.DetectScreen.route) { DetectScreen(navController) }
+        composable(Screen.DetectScreen.route) { RecordScreen(navController) }
     }
 }
 
