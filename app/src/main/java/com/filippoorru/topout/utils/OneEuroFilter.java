@@ -153,7 +153,7 @@ public class OneEuroFilter {
     lasttime = UndefinedTime;
   }
 
-  double filter(double value) throws Exception {
+  public double filter(double value) throws Exception {
     return filter(value, UndefinedTime);
   }
 

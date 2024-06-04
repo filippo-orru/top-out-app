@@ -9,7 +9,7 @@ enum class ClimbingState {
 }
 
 data class PoseState(
-    val feet: List<Pair<Float, Float>>,
+    val feet: List<Pair<Double, Double>>,
     val feetTrackingPoints: List<TrackingPoint>,
     val averageDuration: Long,
 )

@@ -1,13 +1,11 @@
 package com.filippoorru.topout.ui.screens
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.core.resolutionselector.AspectRatioStrategy
 import androidx.camera.core.resolutionselector.ResolutionSelector
-import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement.Center
@@ -35,23 +33,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.filippoorru.topout.model.ClimbingState
 import com.filippoorru.topout.model.RecordViewModel
+import com.filippoorru.topout.utils.getCameraProvider
 import com.filippoorru.topout.utils.zero
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
 
 @Composable
 fun RecordScreen(navController: NavController) {
-    suspend fun Context.getCameraProvider(): ProcessCameraProvider = suspendCoroutine { continuation ->
-        val cameraProvider = ProcessCameraProvider.getInstance(this)
-        cameraProvider.addListener({ continuation.resume(cameraProvider.get()) }, ContextCompat.getMainExecutor(this))
-    }
-
     val context = LocalContext.current
 
     val viewModel = remember {
@@ -84,7 +75,7 @@ fun RecordScreen(navController: NavController) {
 
 
     LaunchedEffect(lensFacing) {
-        val cameraProvider = context.getCameraProvider()
+        val cameraProvider = getCameraProvider(context)
         cameraProvider.unbindAll()
         val preview = Preview.Builder()
             .setResolutionSelector(
@@ -93,7 +84,18 @@ fun RecordScreen(navController: NavController) {
                     .build()
             )
             .build()
-        val cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
+        val cameraSelector = CameraSelector.Builder()
+            .requireLensFacing(lensFacing)
+            .addCameraFilter { cameraInfos ->
+                val wideAngle = cameraInfos.firstOrNull { it.intrinsicZoomRatio < 1.0 }
+                if (wideAngle != null) {
+                    listOf(wideAngle)
+                } else {
+                    // If there is no wide angle camera, return all cameras
+                    listOf(*cameraInfos.toTypedArray()) // Not sure why we need to create a new array
+                }
+            }
+            .build()
         cameraProvider.bindToLifecycle(
             lifecycleOwner,
             cameraSelector,
@@ -181,7 +183,7 @@ fun RecordScreen(navController: NavController) {
 
                             poseState?.let { state ->
                                 state.feet.forEach { (x, y) ->
-                                    val center = Offset((1 - y) * size.width, x * size.height)
+                                    val center = Offset((1 - y.toFloat()) * size.width, x.toFloat() * size.height)
                                     // TODO function to transform landmark position into canvas position and back
                                     drawCircle(
                                         color = Color.White,

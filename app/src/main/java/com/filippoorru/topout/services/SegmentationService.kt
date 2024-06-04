@@ -27,15 +27,11 @@ class SegmentationService(
     private val durations = mutableListOf<Long>()
     val averageDuration get() = durations.average().toLong()
 
-    private fun rateLimit() {
+    fun onSegmentImage(imageProxy: ImageProxy, segmentationPoints: List<Pair<Float, Float>>) {
         val timeSinceLastCompleted = System.currentTimeMillis() - (lastSegmentationCompleted ?: 0)
         if (timeSinceLastCompleted < 1000) {
-            Thread.sleep(1000 - timeSinceLastCompleted)
+            return
         }
-    }
-
-    fun onSegmentImage(imageProxy: ImageProxy, segmentationPoints: List<Pair<Float, Float>>) {
-        rateLimit()
 
         val (result, duration) = measureTimeMillis {
             return@measureTimeMillis segmenter.segmentImage(imageProxy, segmentationPoints)

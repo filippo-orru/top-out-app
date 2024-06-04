@@ -28,14 +28,14 @@ class RecordViewModel(
     private val segmentationService = SegmentationService(context, ::updateSegmentationState)
 
     private fun updatePoseState() {
-        _poseState.value = poseDetectorService.lastPose?.result?.landmarks()?.firstOrNull()?.let { person ->
+        _poseState.value = poseDetectorService.landmarks?.let { person ->
             val feet = PoseDetectorService.getFeet(person)
             val trackerPositions = feet
                 .flatMap { it.getSurroundingTrackingPoints() }
                 .map { (x, y) -> TrackingPoint(x, y, isInMask = segmentationState.value?.containsPoint(x, y) == true) }
 
             PoseState(
-                feet = feet.map { it.x() to it.y() },
+                feet = feet,
                 feetTrackingPoints = trackerPositions,
                 averageDuration = poseDetectorService.averageDuration,
             )
