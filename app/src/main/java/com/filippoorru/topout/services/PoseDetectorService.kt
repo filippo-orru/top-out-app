@@ -1,4 +1,4 @@
-package com.filippoorru.topout
+package com.filippoorru.topout.services
 
 import android.content.Context
 import androidx.camera.core.ImageProxy

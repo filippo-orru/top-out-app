@@ -4,51 +4,13 @@ import android.content.Context
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.lifecycle.ViewModel
-import com.filippoorru.topout.PoseDetectorService
-import com.filippoorru.topout.PoseDetectorService.Companion.getSurroundingTrackingPoints
-import com.filippoorru.topout.utils.zero
+import com.filippoorru.topout.services.PoseDetectorService
+import com.filippoorru.topout.services.PoseDetectorService.Companion.getSurroundingTrackingPoints
+import com.filippoorru.topout.services.SegmentationService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.concurrent.Executors
 
-
-enum class ClimbingState {
-    NotDetected,
-    Idle,
-    Climbing,
-}
-
-data class PoseState(
-    val feet: List<Pair<Float, Float>>,
-    val feetTrackingPoints: List<TrackingPoint>,
-    val averageDuration: Long,
-)
-
-data class TrackingPoint(
-    val x: Double,
-    val y: Double,
-    val isInMask: Boolean,
-)
-
-class SegmentationState(
-    val mask: ByteArray,
-    val width: Int,
-    val height: Int,
-    val averageDuration: Long,
-) {
-    fun containsPoint(topRelative: Double, rightRelative: Double): Boolean {
-        // No idea why I have to do these rotation gymnastics but whatever, it works.
-        val x = topRelative * width
-        val y = (1 - rightRelative) * height
-
-        val i = y.toInt() * width + x.toInt()
-        return i > 0 && i < mask.size && mask[i] == zero
-    }
-
-    override fun toString(): String {
-        return "SegmentationState(mask.size=${mask.size}, width=$width, height=$height, averageDuration=$averageDuration)"
-    }
-}
 
 class RecordViewModel(
     context: Context,
@@ -145,6 +107,11 @@ class RecordViewModel(
                     }
                 }
         )
+    }
+
+    fun close() {
+        poseDetectorService.close()
+        segmentationService.close()
     }
 
     override fun toString(): String {

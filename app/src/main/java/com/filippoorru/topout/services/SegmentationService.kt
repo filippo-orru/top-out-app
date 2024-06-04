@@ -1,4 +1,4 @@
-package com.filippoorru.topout.model
+package com.filippoorru.topout.services
 
 import android.content.Context
 import androidx.camera.core.ImageProxy
@@ -51,6 +51,11 @@ class SegmentationService(
             durations.removeAt(0)
         }
         updateState()
+    }
+
+    fun close() {
+        segmenter.close()
+
     }
 
     companion object {

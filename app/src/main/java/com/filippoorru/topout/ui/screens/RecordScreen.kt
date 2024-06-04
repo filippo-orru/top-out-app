@@ -1,4 +1,4 @@
-package com.filippoorru.topout.screens
+package com.filippoorru.topout.ui.screens
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -58,8 +58,13 @@ fun RecordScreen(navController: NavController) {
         RecordViewModel(context)
     }
 
-    val lensFacing = remember { CameraSelector.LENS_FACING_BACK }
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    val poseState by viewModel.poseState.collectAsStateWithLifecycle(lifecycleOwner)
+    val segmentationState by viewModel.segmentationState.collectAsStateWithLifecycle(lifecycleOwner)
+    val climbingState by viewModel.climbingState.collectAsStateWithLifecycle(lifecycleOwner)
+
+    val lensFacing = remember { CameraSelector.LENS_FACING_BACK }
     val previewView = remember {
         PreviewView(context).apply {
             scaleType = PreviewView.ScaleType.FIT_CENTER
@@ -71,9 +76,9 @@ fun RecordScreen(navController: NavController) {
     // Execute when closing the screen
     DisposableEffect(Unit) {
         onDispose {
-            // TODO how to reopen the detector?
-            //detector.close()
             imageAnalyzers.forEach { it.clearAnalyzer() }
+            viewModel.close()
+            println("RecordScreen disposed")
         }
     }
 
@@ -97,10 +102,6 @@ fun RecordScreen(navController: NavController) {
         )
         preview.setSurfaceProvider(previewView.surfaceProvider)
     }
-
-    val poseState by viewModel.poseState.collectAsStateWithLifecycle()
-    val segmentationState by viewModel.segmentationState.collectAsStateWithLifecycle()
-    val climbingState by viewModel.climbingState.collectAsStateWithLifecycle()
 
     Box(
         modifier = Modifier.fillMaxSize(),
