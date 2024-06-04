@@ -4,13 +4,13 @@ import android.content.Context
 import androidx.camera.core.ImageProxy
 import com.filippoorru.topout.utils.Segmenter
 import com.filippoorru.topout.utils.measureTimeMillis
-import com.filippoorru.topout.utils.zero
 import com.google.mediapipe.framework.image.ByteBufferExtractor
 import com.google.mediapipe.tasks.vision.imagesegmenter.ImageSegmenterResult
 import kotlin.jvm.optionals.getOrNull
 
 class SegmentationService(
     context: Context,
+    val updateState: () -> Unit,
 ) {
     private val segmenter = Segmenter(context)
 
@@ -50,17 +50,7 @@ class SegmentationService(
         if (durations.size > 10) {
             durations.removeAt(0)
         }
-    }
-
-    fun pointIsInSegmentedArea(topRelative: Double, rightRelative: Double): Boolean {
-        // No idea why I have to do these rotation gymnastics but whatever, it works.
-        val segmentation = lastSegmentation ?: return false
-
-        val x = topRelative * segmentation.width
-        val y = (1 - rightRelative) * segmentation.height
-
-        val i = y.toInt() * segmentation.width + x.toInt()
-        return i > 0 && i < segmentation.mask.size && segmentation.mask[i] == zero
+        updateState()
     }
 
     companion object {

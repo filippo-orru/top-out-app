@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,15 +36,13 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.filippoorru.topout.model.RecordState
+import com.filippoorru.topout.model.ClimbingState
 import com.filippoorru.topout.model.RecordViewModel
 import com.filippoorru.topout.utils.zero
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
-
-
-// TODO integrate filter for every person->landmark->coordinate. Or maybe just the 2 we need?
 
 
 @Composable
@@ -58,8 +57,6 @@ fun RecordScreen(navController: NavController) {
     val viewModel = remember {
         RecordViewModel(context)
     }
-
-    val state = viewModel.state.value
 
     val lensFacing = remember { CameraSelector.LENS_FACING_BACK }
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -101,6 +98,10 @@ fun RecordScreen(navController: NavController) {
         preview.setSurfaceProvider(previewView.surfaceProvider)
     }
 
+    val poseState by viewModel.poseState.collectAsStateWithLifecycle()
+    val segmentationState by viewModel.segmentationState.collectAsStateWithLifecycle()
+    val climbingState by viewModel.climbingState.collectAsStateWithLifecycle()
+
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -132,17 +133,13 @@ fun RecordScreen(navController: NavController) {
                             .align(Alignment.Center),
                         color = Color.Black.copy(alpha = 0.15f),
                     ) {
-                        val lastSegmentation = state.segmentationState
 
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             val height = size.height
                             val width = size.width
 
-                            if (lastSegmentation != null) {
-                                val byteArray = lastSegmentation.mask
-                                val imgWidth = lastSegmentation.width
-                                val imgHeight = lastSegmentation.height
-
+                            segmentationState?.let { state ->
+                                val byteArray = state.mask
                                 val pixels = IntArray(byteArray.size)
                                 for (i in pixels.indices) {
                                     // TODO can this be optimized?
@@ -151,6 +148,9 @@ fun RecordScreen(navController: NavController) {
                                         if (byte != zero) android.graphics.Color.TRANSPARENT else android.graphics.Color.RED
                                     pixels[i] = color
                                 }
+
+                                val imgWidth = state.width
+                                val imgHeight = state.height
 
                                 drawImage(
                                     Bitmap.createScaledBitmap(
@@ -178,8 +178,8 @@ fun RecordScreen(navController: NavController) {
                                 }
                             }
 
-                            if (state.poseState != null) {
-                                state.poseState.feet.forEach { (x, y) ->
+                            poseState?.let { state ->
+                                state.feet.forEach { (x, y) ->
                                     val center = Offset((1 - y) * size.width, x * size.height)
                                     // TODO function to transform landmark position into canvas position and back
                                     drawCircle(
@@ -194,7 +194,7 @@ fun RecordScreen(navController: NavController) {
                                     )
                                 }
 
-                                state.poseState.feetTrackingPoints.forEach { point ->
+                                state.feetTrackingPoints.forEach { point ->
                                     val center = Offset(((1 - point.y) * size.width).toFloat(), (point.x * size.height).toFloat())
                                     drawCircle(
                                         color = Color.White,
@@ -217,7 +217,7 @@ fun RecordScreen(navController: NavController) {
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     Text(
-                        state.toString(),
+                        viewModel.toString(),
                         Modifier.align(Alignment.BottomCenter),
                         color = Color.White
                     )
@@ -231,22 +231,22 @@ fun RecordScreen(navController: NavController) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Center,
         ) {
-            when (state.climbingState) {
-                RecordState.ClimbingState.NotDetected -> {
+            when (climbingState) {
+                ClimbingState.NotDetected -> {
                     Text(
                         "...",
                         color = Color.White
                     )
                 }
 
-                RecordState.ClimbingState.Idle -> {
+                ClimbingState.Idle -> {
                     Text(
                         "Idle",
                         color = Color.White
                     )
                 }
 
-                RecordState.ClimbingState.Climbing -> {
+                ClimbingState.Climbing -> {
                     Text(
                         "🔴 REC",
                         color = Color.White

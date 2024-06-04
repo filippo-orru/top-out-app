@@ -13,7 +13,10 @@ import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 import kotlin.math.cos
 import kotlin.math.sin
 
-class PoseDetectorService(context: Context) {
+class PoseDetectorService(
+    context: Context,
+    val updateState: () -> Unit,
+) {
     private val poseLandmarker: PoseLandmarker = run {
         // Set general pose landmarker options
         val baseOptions = BaseOptions.builder()
@@ -33,6 +36,7 @@ class PoseDetectorService(context: Context) {
         return@run PoseLandmarker.createFromOptions(context, optionsBuilder.build())
     }
 
+    // TODO integrate filter for every person->landmark->coordinate. Or maybe just the 2 we need?
     class PoseInfo(
         val result: PoseLandmarkerResult,
     )
@@ -57,6 +61,7 @@ class PoseDetectorService(context: Context) {
         }
 
         imageProxy.close()
+        updateState()
     }
 
     fun close() {
