@@ -1,11 +1,18 @@
 package com.filippoorru.topout.ui.screens
 
+import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import android.provider.MediaStore
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.core.resolutionselector.AspectRatioStrategy
 import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.video.MediaStoreOutputOptions
+import androidx.camera.video.Quality
+import androidx.camera.video.QualitySelector
+import androidx.camera.video.Recorder
+import androidx.camera.video.VideoCapture
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement.Center
@@ -17,6 +24,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Button
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +47,8 @@ import com.filippoorru.topout.model.ClimbingState
 import com.filippoorru.topout.model.RecordViewModel
 import com.filippoorru.topout.utils.getCameraProvider
 import com.filippoorru.topout.utils.zero
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 
 @Composable
@@ -63,6 +73,37 @@ fun RecordScreen(navController: NavController) {
     }
 
     val imageAnalyzers = remember { viewModel.getImageAnalyzers() }
+
+    val recorder = remember {
+        Recorder.Builder()
+            .setQualitySelector(
+                QualitySelector.from(Quality.HD)
+            )
+            .build()
+    }
+
+    val videoCapture = remember {
+        VideoCapture.withOutput(recorder)
+    }
+
+    val recording = remember {
+        val name = "CameraX-recording-" +
+                SimpleDateFormat("yymmdd_HHss", Locale.US)
+                    .format(System.currentTimeMillis()) + ".mp4"
+
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Video.Media.DISPLAY_NAME, name)
+        }
+
+        val mediaStoreOutput = MediaStoreOutputOptions
+            .Builder(context.contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
+            .setContentValues(contentValues)
+            .build()
+
+        videoCapture.output
+            .prepareRecording(context, mediaStoreOutput)
+            .start({}, {})
+    }
 
     // Execute when closing the screen
     DisposableEffect(Unit) {
@@ -95,11 +136,13 @@ fun RecordScreen(navController: NavController) {
                 }
             }
             .build()
+
         cameraProvider.bindToLifecycle(
             lifecycleOwner,
             cameraSelector,
             preview,
             *imageAnalyzers,
+            videoCapture,
         )
         preview.setSurfaceProvider(previewView.surfaceProvider)
     }
@@ -215,6 +258,10 @@ fun RecordScreen(navController: NavController) {
                         }
 
                     }
+                }
+
+                Button(onClick = { recording.stop() }) {
+                    Text("Stop recording")
                 }
 
                 Box(modifier = Modifier.fillMaxSize()) {
