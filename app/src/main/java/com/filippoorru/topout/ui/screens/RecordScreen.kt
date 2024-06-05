@@ -73,7 +73,6 @@ fun RecordScreen(navController: NavController) {
         }
     }
 
-
     LaunchedEffect(lensFacing) {
         val cameraProvider = getCameraProvider(context)
         cameraProvider.unbindAll()

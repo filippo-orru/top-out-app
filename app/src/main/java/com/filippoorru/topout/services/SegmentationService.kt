@@ -28,7 +28,7 @@ class SegmentationService(
     val averageDuration get() = durations.average().toLong()
 
     fun onSegmentImage(imageProxy: ImageProxy, segmentationPoints: List<Pair<Float, Float>>) {
-        if (lastSegmentationCompleted == null || System.currentTimeMillis() - lastSegmentationCompleted!! > 1000) {
+        if (lastSegmentationCompleted != null && System.currentTimeMillis() - lastSegmentationCompleted!! > 1000) {
             return
         }
 

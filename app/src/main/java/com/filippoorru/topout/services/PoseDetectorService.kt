@@ -37,8 +37,6 @@ class PoseDetectorService(
         return@run PoseLandmarker.createFromOptions(context, optionsBuilder.build())
     }
 
-    // TODO integrate filter for every person->landmark->coordinate. Or maybe just the 2 we need?
-
     private val filteredLandmarks = mutableMapOf<Int, FilteredLandmark>()
     val landmarks: List<Pair<Double, Double>>? get() = filteredLandmarks.values.map { it.x to it.y }.emptyToNull()
 
@@ -54,8 +52,8 @@ class PoseDetectorService(
 
         result.landmarks().firstOrNull()?.let { person ->
             person.forEachIndexed { index, landmark ->
-                val existing = filteredLandmarks.putIfAbsent(index, FilteredLandmark(landmark))
-                existing?.add(landmark)
+                val existingFilter = filteredLandmarks.putIfAbsent(index, FilteredLandmark(landmark))
+                existingFilter?.add(landmark)
             }
         }
 
@@ -101,9 +99,9 @@ object Landmark {
 class FilteredLandmark(
     initial: NormalizedLandmark
 ) {
-    private val frequency = 0.03
+    private val frequency = 10.0
     private val minCutoff = 1.0
-    private val beta = 0.002
+    private val beta = 0.0006
 
     private val xFilter = OneEuroFilter(frequency, minCutoff, beta)
     private var lastX: Double = initial.x().toDouble()
