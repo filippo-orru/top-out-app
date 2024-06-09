@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -87,7 +88,7 @@ fun RecordScreen(navController: NavController) {
     }
 
     val recording = remember {
-        val name = "CameraX-recording-" +
+        val name = "topout-" +
                 SimpleDateFormat("yymmdd_HHss", Locale.US)
                     .format(System.currentTimeMillis()) + ".mp4"
 
@@ -96,7 +97,7 @@ fun RecordScreen(navController: NavController) {
         }
 
         val mediaStoreOutput = MediaStoreOutputOptions
-            .Builder(context.contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
+            .Builder(context.contentResolver, MediaStore.Video.Media.INTERNAL_CONTENT_URI)
             .setContentValues(contentValues)
             .build()
 
@@ -110,6 +111,7 @@ fun RecordScreen(navController: NavController) {
         onDispose {
             imageAnalyzers.forEach { it.clearAnalyzer() }
             viewModel.close()
+            recording.stop()
             println("RecordScreen disposed")
         }
     }
@@ -224,9 +226,23 @@ fun RecordScreen(navController: NavController) {
                             }
 
                             poseState?.let { state ->
-                                state.feet.forEach { (x, y) ->
+                                state.feet.forEach { foot ->
+                                    val (x, y) = foot
                                     val center = Offset((1 - y.toFloat()) * size.width, x.toFloat() * size.height)
                                     // TODO function to transform landmark position into canvas position and back
+
+                                    if (!foot.isInMask) {
+                                        val arcRadius = 10f
+                                        drawArc(
+                                            color = Color.White,
+                                            startAngle = 0f,
+                                            sweepAngle = 360f,
+                                            useCenter = true,
+                                            topLeft = center - Offset(arcRadius, arcRadius),
+                                            size = Size(2 * arcRadius, 2 * arcRadius)
+                                        )
+                                    }
+
                                     drawCircle(
                                         color = Color.White,
                                         center = center,
@@ -237,22 +253,6 @@ fun RecordScreen(navController: NavController) {
                                         center = center,
                                         radius = 7f
                                     )
-                                }
-
-                                state.feetTrackingPoints.forEach { point ->
-                                    val center = Offset(((1 - point.y) * size.width).toFloat(), (point.x * size.height).toFloat())
-                                    drawCircle(
-                                        color = Color.White,
-                                        center = center,
-                                        radius = 7f
-                                    )
-                                    if (!point.isInMask) {
-                                        drawCircle(
-                                            color = Color.Red,
-                                            center = center,
-                                            radius = 5f
-                                        )
-                                    }
                                 }
                             }
                         }

@@ -9,7 +9,7 @@ enum class ClimbingState {
 }
 
 data class PoseState(
-    val feet: List<Pair<Double, Double>>,
+    val feet: List<TrackingPoint>,
     val feetTrackingPoints: List<TrackingPoint>,
     val averageDuration: Long,
 )
@@ -19,6 +19,8 @@ data class TrackingPoint(
     val y: Double,
     val isInMask: Boolean,
 )
+
+val List<TrackingPoint>.isInMask get() = count { it.isInMask } > size / 2
 
 class SegmentationState(
     val mask: ByteArray,

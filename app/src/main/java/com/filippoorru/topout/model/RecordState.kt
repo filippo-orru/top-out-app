@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.lifecycle.ViewModel
+import com.filippoorru.topout.services.ClimbingStateService
 import com.filippoorru.topout.services.PoseDetectorService
 import com.filippoorru.topout.services.PoseDetectorService.Companion.getSurroundingTrackingPoints
 import com.filippoorru.topout.services.SegmentationService
@@ -26,16 +27,23 @@ class RecordViewModel(
 
     private val poseDetectorService = PoseDetectorService(context, ::updatePoseState)
     private val segmentationService = SegmentationService(context, ::updateSegmentationState)
+    private val climbingStateService = ClimbingStateService()//::updateClimbingState)
 
     private fun updatePoseState() {
         _poseState.value = poseDetectorService.landmarks?.let { person ->
             val feet = PoseDetectorService.getFeet(person)
-            val trackerPositions = feet
-                .flatMap { it.getSurroundingTrackingPoints() }
-                .map { (x, y) -> TrackingPoint(x, y, isInMask = segmentationState.value?.containsPoint(x, y) == true) }
+            val feetWithTrackerPositions = feet
+                .associateWith { foot ->
+                    foot.getSurroundingTrackingPoints().map { (x, y) ->
+                        TrackingPoint(x, y, isInMask = segmentationState.value?.containsPoint(x, y) == true)
+                    }
+                }
 
+            val trackerPositions = feetWithTrackerPositions.values.flatten()
             PoseState(
-                feet = feet,
+                feet = feetWithTrackerPositions.map { (foot, trackerPositions) ->
+                    TrackingPoint(foot.first, foot.second, isInMask = trackerPositions.isInMask)
+                },
                 feetTrackingPoints = trackerPositions,
                 averageDuration = poseDetectorService.averageDuration,
             )
@@ -55,14 +63,14 @@ class RecordViewModel(
         val pose = poseState.value
         val climbingState: ClimbingState = if (pose == null) {
             ClimbingState.NotDetected
-        } else if (pose.feetTrackingPoints.count { it.isInMask } < pose.feetTrackingPoints.size / 2) {
+        } else if (pose.feetTrackingPoints.isInMask) {
             // Most feet tracking points have left the ground
             ClimbingState.Climbing
         } else {
             ClimbingState.Idle
         }
-
         _climbingState.value = climbingState
+        climbingStateService.onNewClimbingState(climbingState, System.currentTimeMillis())
     }
 
     val segmentationPoints = listOf(
