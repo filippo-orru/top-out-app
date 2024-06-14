@@ -88,20 +88,18 @@ fun RecordScreen(navController: NavController) {
     }
 
     val recording = remember {
-        val name = "topout-" +
-                SimpleDateFormat("yymmdd_HHss", Locale.US)
-                    .format(System.currentTimeMillis()) + ".mp4"
+        val name = "topout-" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(System.currentTimeMillis()) + ".mp4"
 
         val contentValues = ContentValues().apply {
             put(MediaStore.Video.Media.DISPLAY_NAME, name)
         }
 
         val mediaStoreOutput = MediaStoreOutputOptions
-            .Builder(context.contentResolver, MediaStore.Video.Media.INTERNAL_CONTENT_URI)
+            .Builder(context.contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
             .setContentValues(contentValues)
             .build()
 
-        videoCapture.output
+        recorder
             .prepareRecording(context, mediaStoreOutput)
             .start({}, {})
     }

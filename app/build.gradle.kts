@@ -78,4 +78,6 @@ dependencies {
     implementation(libs.androidx.camera.view)
 
     implementation(libs.accompanist.permissions)
+
+    implementation(libs.arthenica.ffmpegkit)
 }

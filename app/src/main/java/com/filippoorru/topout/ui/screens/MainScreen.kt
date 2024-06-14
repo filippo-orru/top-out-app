@@ -1,6 +1,8 @@
 package com.filippoorru.topout.ui.screens
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -27,27 +29,38 @@ fun MainScreen(navController: NavController) {
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-        ) {
-            if (cameraPermissionState.status.isGranted) {
-                Button(
-                    onClick = {
-                        // Navigate to another screen
-                        navController.navigate(Routes.Record.route)
-                    },
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text("Start detection")
+        Box {
+            Column(
+                Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                if (cameraPermissionState.status.isGranted) {
+                    Button(
+                        onClick = {
+                            // Navigate to another screen
+                            navController.navigate(Routes.Record.route)
+                        },
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text("Start detection")
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            cameraPermissionState.launchPermissionRequest()
+                        },
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text("Request camera permission")
+                    }
                 }
-            } else {
+
                 Button(
-                    onClick = {
-                        cameraPermissionState.launchPermissionRequest()
-                    },
+                    onClick = { navController.navigate(Routes.Cut.route) },
                     modifier = Modifier.padding(16.dp)
                 ) {
-                    Text("Request camera permission")
+                    Text("Cut videos")
                 }
             }
         }
