@@ -44,8 +44,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.filippoorru.topout.model.ClimbingState
-import com.filippoorru.topout.model.RecordViewModel
+import com.filippoorru.topout.ui.model.ClimbingState
+import com.filippoorru.topout.ui.model.RecordViewModel
 import com.filippoorru.topout.utils.getCameraProvider
 import com.filippoorru.topout.utils.zero
 import java.text.SimpleDateFormat

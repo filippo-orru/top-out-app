@@ -1,6 +1,6 @@
 package com.filippoorru.topout.services
 
-import com.filippoorru.topout.model.ClimbingState
+import com.filippoorru.topout.ui.model.ClimbingState
 
 class ClimbingStateService {
     private val climbingStateHistory = mutableListOf<ClimbingStateHistoryItem>()

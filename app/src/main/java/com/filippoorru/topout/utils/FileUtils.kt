@@ -5,7 +5,8 @@ import android.provider.MediaStore
 
 class VideoFile(
     val id: Long,
-    val name: String
+    val name: String,
+    val path: String,
 )
 
 fun getAllVideos(context: Context): List<VideoFile>? {
@@ -28,7 +29,11 @@ fun getAllVideos(context: Context): List<VideoFile>? {
 
         generateSequence {
             if (cursor.moveToNext()) {
-                VideoFile(cursor.getLong(idColumn), cursor.getString(nameColumn))
+                VideoFile(
+                    cursor.getLong(idColumn),
+                    cursor.getString(nameColumn),
+                    cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA))
+                )
             } else {
                 null
             }

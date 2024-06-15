@@ -1,7 +1,7 @@
 package com.filippoorru.topout
 
-import com.filippoorru.topout.model.ClimbingState
 import com.filippoorru.topout.services.ClimbingStateService
+import com.filippoorru.topout.ui.model.ClimbingState
 import junit.framework.TestCase.assertEquals
 import org.junit.Test
 

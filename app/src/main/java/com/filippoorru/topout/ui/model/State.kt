@@ -1,4 +1,4 @@
-package com.filippoorru.topout.model
+package com.filippoorru.topout.ui.model
 
 import com.filippoorru.topout.utils.zero
 
