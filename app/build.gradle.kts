@@ -2,7 +2,8 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
     alias(libs.plugins.undercouchDownload)
-    id(libs.plugins.kapt.get().pluginId)
+    id(libs.plugins.ksp.get().pluginId) version libs.plugins.ksp.get().version.displayName
+    alias(libs.plugins.compose.compiler)
 }
 
 android {
@@ -82,7 +83,9 @@ dependencies {
 
     implementation(libs.arthenica.ffmpegkit)
 
+    implementation(libs.google.exoplayer)
+
     implementation(libs.androidx.room.runtime)
     annotationProcessor(libs.androidx.room.compiler)
-    kapt(libs.androidx.room.compiler)
+    ksp(libs.androidx.room.compiler)
 }
