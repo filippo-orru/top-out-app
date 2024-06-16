@@ -15,8 +15,8 @@ fun AppNavigator() {
         composable(Routes.Main.route) { MainScreen(navController) }
         composable(Routes.Record.route) { RecordScreen(navController) }
         composable(Routes.Cut.route) { backStackEntry ->
-            val recordingId = backStackEntry.arguments?.getString("itemId")!!
-            CutScreen(navController, recordingId)
+            val routeVisitId = backStackEntry.arguments?.getString("routeVisitId")!!
+            CutScreen(navController, routeVisitId)
         }
     }
 }
@@ -24,5 +24,9 @@ fun AppNavigator() {
 sealed class Routes(val route: String) {
     data object Main : Routes("main")
     data object Record : Routes("record")
-    data object Cut : Routes("cut/{recordingId}")
+    data object Cut : Routes("cut/{routeVisitId}") {
+        fun build(routeVisitId: String): String {
+            return "cut/$routeVisitId"
+        }
+    }
 }

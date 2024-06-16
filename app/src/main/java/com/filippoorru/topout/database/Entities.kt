@@ -12,8 +12,8 @@ import com.filippoorru.topout.services.ClimbingStateHistoryItem
 )
 class Route(
     @PrimaryKey
-    val id: Int,
-    val imagePaths: List<String>,
+    val id: String,
+    val image: String,
 //    var name: String,
 //    var difficulty: String,
 //    var notes: String,
@@ -21,21 +21,22 @@ class Route(
 
 @Entity(
     tableName = "routeVisits",
-    foreignKeys = [ForeignKey(
-        entity = Route::class,
-        parentColumns = arrayOf("id"),
-        childColumns = arrayOf("route"),
-        onDelete = ForeignKey.CASCADE
-    )]
+//    foreignKeys = [ForeignKey(
+//        entity = Route::class,
+//        parentColumns = arrayOf("id"),
+//        childColumns = arrayOf("route"),
+//        onDelete = ForeignKey.CASCADE
+//    )]
 )
 class RouteVisitEntity(
     @PrimaryKey
-    val id: Int,
+    val id: String,
 
     @Embedded
     var recording: RouteVisitRecording?,
 
-    val routeId: String
+    val routeId: String,
+    val timestamp: Long,
 //    var notes: String,
 )
 
@@ -48,6 +49,7 @@ class RouteAndVisits(
 
 class RouteVisitRecording(
     val filePath: String,
+
     val climbingStateHistory: List<ClimbingStateHistoryItem>,
 )
 
@@ -61,7 +63,7 @@ class RouteVisitRecording(
 )
 class AttemptEntity(
     @PrimaryKey
-    val id: Int,
+    val id: String,
 
     @Relation(parentColumn = "id", entityColumn = "routeVisitId")
     var routeVisitId: String,

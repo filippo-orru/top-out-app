@@ -22,8 +22,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.filippoorru.topout.database.Database
 import com.filippoorru.topout.ui.Routes
-import com.filippoorru.topout.utils.getAllVideos
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.isGranted
@@ -40,8 +40,8 @@ fun MainScreen(navController: NavController) {
 
     val context = LocalContext.current
 
-    val files = remember {
-        getAllVideos(context)
+    val routeVisits = remember {
+        Database.i.routeVisits().getAll()
     }
 
     Surface(
@@ -82,13 +82,13 @@ fun MainScreen(navController: NavController) {
                     horizontalAlignment = Alignment.Start,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("Files", Modifier.padding(bottom = 8.dp), fontSize = 24.sp)
+                    Text("Route Visits", Modifier.padding(bottom = 8.dp), fontSize = 24.sp)
 
-                    for (file in files ?: emptyList()) {
+                    for (routeVisit in routeVisits) {
                         Button(onClick = {
-                            navController.navigate(Routes.Cut.route)
+                            navController.navigate(Routes.Cut.build(routeVisit.id))
                         }) {
-                            Text(file.name)
+                            Text(routeVisit.id)
                         }
                     }
                 }

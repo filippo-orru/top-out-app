@@ -1,6 +1,7 @@
 package com.filippoorru.topout.services
 
 import com.filippoorru.topout.ui.model.ClimbingState
+import com.squareup.moshi.JsonClass
 
 class ClimbingStateService {
     private val climbingStateHistory = mutableListOf<ClimbingStateHistoryItem>()
@@ -51,6 +52,7 @@ class ClimbingStateService {
     }
 }
 
+@JsonClass(generateAdapter = true)
 class ClimbingStateHistoryItem(
     val climbingState: ClimbingState,
     val timestamp: Long,
