@@ -10,7 +10,7 @@ import com.filippoorru.topout.services.ClimbingStateHistoryItem
 @Entity(
     tableName = "routes"
 )
-class Route(
+class RouteEntity(
     @PrimaryKey
     val id: String,
     val image: String,
@@ -42,7 +42,7 @@ class RouteVisitEntity(
 
 class RouteAndVisits(
     @Embedded
-    val route: Route,
+    val route: RouteEntity,
     @Relation(parentColumn = "id", entityColumn = "routeId")
     val visits: List<RouteVisitEntity>,
 )

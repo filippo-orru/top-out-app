@@ -3,6 +3,8 @@ package com.filippoorru.topout.ui.screens
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import com.arthenica.ffmpegkit.FFmpegKit
@@ -21,9 +23,10 @@ fun CutScreen(navController: NavHostController, routeVisitId: String) {
         }
     }
 
-    val routeVisit = Database.i.routeVisits().get(routeVisitId.toInt())
+    val routeVisit by Database.i.routeVisits().get(routeVisitId.toInt()).collectAsState(initial = null)
+    val visit = routeVisit
 
-    if (routeVisit == null) {
+    if (visit == null) {
         Box {
             Text("Recording not found")
         }
@@ -33,7 +36,7 @@ fun CutScreen(navController: NavHostController, routeVisitId: String) {
 
 //        val exoPlayer = remember {
 //            ExoPlayer.Builder(context).build().apply {
-//                setMediaItem(MediaItem.fromUri(routeVisit.recording?.filePath))
+//                setMediaItem(MediaItem.fromUri(visit.recording?.filePath))
 //                prepare()
 //            }
 //        }
@@ -51,7 +54,7 @@ fun CutScreen(navController: NavHostController, routeVisitId: String) {
 
 
         Box {
-            Text("Cutting ${routeVisit.id} ${routeVisit.routeId}")
+            Text("Cutting ${visit.id} ${visit.routeId}")
             //cutFile(file.path, file.path.substringBeforeLast("/") + "/new_${file.name}", 0, 50_000)
         }
     }

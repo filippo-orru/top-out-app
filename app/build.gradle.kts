@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.undercouchDownload)
     id(libs.plugins.ksp.get().pluginId) version libs.plugins.ksp.get().version.displayName
     alias(libs.plugins.compose.compiler)
+    id(libs.plugins.room.get().pluginId) version libs.plugins.room.get().version.displayName
 }
 
 android {
@@ -47,7 +48,11 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    room {
+        schemaDirectory("$projectDir/schemas")
+    }
 }
+
 
 project.ext["ASSET_DIR"] = "$projectDir/src/main/assets"
 
@@ -87,6 +92,7 @@ dependencies {
     implementation(libs.google.exoplayer)
 
     implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
     annotationProcessor(libs.androidx.room.compiler)
     ksp(libs.androidx.room.compiler)
 

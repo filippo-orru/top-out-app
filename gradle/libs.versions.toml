@@ -50,6 +50,8 @@ arthenica-ffmpegkit = { group = "com.arthenica", name = "ffmpeg-kit-full", versi
 
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "roomVersion" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "roomVersion" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "roomVersion" }
+
 google-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "exoplayer" }
 androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "exoplayer" }
 
@@ -61,6 +63,7 @@ androidApplication = { id = "com.android.application", version.ref = "agp" }
 jetbrainsKotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 undercouchDownload = { id = "de.undercouch.download", version = "5.6.0" }
 ksp = { id = "com.google.devtools.ksp", version = "2.0.0-1.0.21" }
+room = { id = "androidx.room", version.ref = "roomVersion" }
 
 #jebrainsCompose = { id = "org.jetbrains.compose", version.ref = "composePlugin" }
 #kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

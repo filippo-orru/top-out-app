@@ -8,6 +8,7 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import kotlinx.coroutines.flow.Flow
 
 object Database {
     lateinit var i: AppDatabase
@@ -17,7 +18,7 @@ object Database {
     }
 }
 
-@Database(entities = [Route::class], version = 1)
+@Database(entities = [RouteEntity::class, RouteVisitEntity::class], version = 1)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun routes(): RoutesCollection
@@ -28,13 +29,13 @@ abstract class AppDatabase : RoomDatabase() {
 @Dao
 interface RoutesCollection {
     @Insert
-    fun save(route: Route)
+    fun save(route: RouteEntity)
 
     @Query("SELECT * FROM routes WHERE id = :id")
-    fun get(id: Int): Route?
+    fun get(id: Int): Flow<RouteEntity?>
 
     @Query("SELECT * FROM routes")
-    fun getAll(): List<Route>
+    fun getAll(): Flow<List<RouteEntity>>
 }
 
 @Dao
@@ -43,9 +44,9 @@ interface RouteVisitsCollection {
     fun save(routeVisit: RouteVisitEntity)
 
     @Query("SELECT * FROM routeVisits WHERE id = :id")
-    fun get(id: Int): RouteVisitEntity?
+    fun get(id: Int): Flow<RouteVisitEntity?>
 
     @Query("SELECT * FROM routeVisits")
-    fun getAll(): List<RouteVisitEntity>
+    fun getAll(): Flow<List<RouteVisitEntity>>
 }
 
