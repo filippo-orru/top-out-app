@@ -1,12 +1,11 @@
 package com.filippoorru.topout.ui.model
 
-import android.content.ContentValues
 import android.content.Context
-import android.provider.MediaStore
+import android.os.Environment
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.UseCase
 import androidx.camera.core.resolutionselector.ResolutionSelector
-import androidx.camera.video.MediaStoreOutputOptions
+import androidx.camera.video.FileOutputOptions
 import androidx.camera.video.Quality
 import androidx.camera.video.QualitySelector
 import androidx.camera.video.Recorder
@@ -61,18 +60,15 @@ class RecordViewModel(
         .setQualitySelector(QualitySelector.from(Quality.HD))
         .build()
     private var recordingStartTimestamp = 0L
-    private val pendingRecording = run {
-        val contentValues = ContentValues().apply {
-            put(MediaStore.Video.Media.DISPLAY_NAME, recordingFileName)
-        }
+    private val outputOptions = run {
+        val moviesDir = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)!!
+        moviesDir.mkdirs()
 
-        val mediaStoreOutput = MediaStoreOutputOptions
-            .Builder(context.contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
-            .setContentValues(contentValues)
+        FileOutputOptions
+            .Builder(moviesDir.resolve(recordingFileName))
             .build()
-
-        recorder.prepareRecording(context, mediaStoreOutput)
     }
+    private val pendingRecording = recorder.prepareRecording(context, outputOptions)
     private var recording: Recording? = null
 
 
@@ -181,6 +177,7 @@ class RecordViewModel(
         segmentationService.dispose()
 
         recording?.stop() // File is automatically saved to MediaStore
+        _recordingState.value = RecordingState.NotRecording
 
         saveRouteVisit()
     }
@@ -191,7 +188,7 @@ class RecordViewModel(
                 RouteVisitEntity(
                     id = routeVisitId,
                     recording = RouteVisitRecording(
-                        recordingFileName,
+                        outputOptions.file.absolutePath,
                         climbingStateService.getClimbingStateHistory(recordingStartTimestamp)
                     ),
                     timestamp = recordingStartTimestamp,

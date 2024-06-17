@@ -1,5 +1,10 @@
 package com.filippoorru.topout.ui.screens
 
+import android.media.ThumbnailUtils
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
+import android.util.Size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -28,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +51,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -122,11 +131,11 @@ fun MainScreen(
                     Column(
                         Modifier
                             .fillMaxSize()
-                            .padding(8.dp),
+                            .padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 64.dp)
+                            .verticalScroll(rememberScrollState()),
                         horizontalAlignment = Alignment.Start,
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-
                         val simpleDateFormat = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault())
                         val grouped = visits.groupBy { simpleDateFormat.format(Date(it.timestamp)) }
                         for ((dayString, visitsOnDay) in grouped) {
@@ -150,18 +159,32 @@ fun MainScreen(
                                                 .fillMaxWidth()
                                                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                                         ) {
-                                            // Thumbnail here
+                                            @Suppress("DEPRECATION")
+                                            val thumbnail = remember {
+                                                val file = File(routeVisit.recording.filePath)
+                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                                    context.contentResolver.loadThumbnail(Uri.fromFile(file), Size(512, 384), null)
+                                                } else {
+                                                    ThumbnailUtils.createVideoThumbnail(
+                                                        file.absolutePath,
+                                                        MediaStore.Images.Thumbnails.MINI_KIND
+                                                    )
+                                                }
+                                            }
                                         }
 
                                         Row(
-                                            Modifier.fillMaxWidth(),
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                                         ) {
-                                            ClimberIcon(Color.Black)
+                                            ClimberIcon(Color.Black.copy(alpha = 0.7f))
 
                                             Text(
                                                 SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(routeVisit.timestamp)),
-                                                Modifier.padding(16.dp),
+                                                Modifier,
                                             )
                                         }
                                     }

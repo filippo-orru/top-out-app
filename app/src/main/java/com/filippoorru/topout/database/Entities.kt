@@ -32,7 +32,7 @@ class RouteVisitEntity(
     val id: String,
 
     @Embedded
-    var recording: RouteVisitRecording?,
+    var recording: RouteVisitRecording,
 
 //    val routeId: String,
     val timestamp: Long,

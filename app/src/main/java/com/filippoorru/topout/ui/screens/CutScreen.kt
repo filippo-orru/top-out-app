@@ -32,6 +32,8 @@ import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.FFmpegSession
 import com.arthenica.ffmpegkit.ReturnCode
 import com.filippoorru.topout.database.Database
+import com.filippoorru.topout.ui.Center
+import java.io.File
 
 @Composable
 fun CutScreen(navController: NavHostController, routeVisitId: String) {
@@ -47,6 +49,7 @@ fun CutScreen(navController: NavHostController, routeVisitId: String) {
     val routeVisit by Database.i.routeVisits().get(routeVisitId).collectAsState(initial = null)
     val visit = routeVisit
     val recording = visit?.recording
+    val fileExists: Boolean = remember(recording?.filePath) { recording?.filePath?.let { File(it).exists() } == true }
 
     Scaffold(
         topBar = {
@@ -61,6 +64,7 @@ fun CutScreen(navController: NavHostController, routeVisitId: String) {
                         // Save
                         cutFile(
                             recording.filePath,
+                            // TODO proper path building
                             recording.filePath.substringBeforeLast("/") + "/new_${recording.filePath.substringAfterLast("/")}",
                             0,
                             5_000
@@ -76,14 +80,23 @@ fun CutScreen(navController: NavHostController, routeVisitId: String) {
             Modifier.padding(padding),
         ) {
             if (visit == null) {
-                Text("Recording not found")
+                Center {
+                    Text("Visit not found")
+                }
+
+            } else if (!fileExists) {
+                Center {
+                    Text("Recorded video file not found")
+                }
+
             } else {
+                recording!! // Safe to unwrap here because recordingMediaItem is not null
 
                 val context = LocalContext.current
 
                 val exoPlayer = remember {
                     ExoPlayer.Builder(context).build().apply {
-                        visit.recording?.filePath?.let { MediaItem.fromUri(it) }?.let { setMediaItem(it) }
+                        setMediaItem(MediaItem.fromUri(recording.filePath))
                         prepare()
                     }
                 }
@@ -110,23 +123,19 @@ fun CutScreen(navController: NavHostController, routeVisitId: String) {
                             .fillMaxHeight(0.4f)
                     )
 
-                    if (recording == null) {
-                        Text("Recording not found")
-                    } else {
-                        Column(
-                            Modifier
-                                .fillMaxSize()
-                                .padding(16.dp),
-                            horizontalAlignment = Alignment.Start,
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Text(
-                                "File: ${recording.filePath}",
-                            )
-                            Text(
-                                "Climbing state history: ${recording.climbingStateHistory}",
-                            )
-                        }
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.Start,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            "File: ${recording.filePath}",
+                        )
+                        Text(
+                            "Climbing state history: ${recording.climbingStateHistory}",
+                        )
                     }
                 }
             }

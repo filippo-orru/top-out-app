@@ -27,7 +27,13 @@ class SegmentationService(
     private val durations = mutableListOf<Long>()
     val averageDuration get() = durations.average().toLong()
 
+    private var disposed = false
+
     fun onSegmentImage(imageProxy: ImageProxy, segmentationPoints: List<Pair<Float, Float>>) {
+        if (disposed) {
+            return
+        }
+
         if (lastSegmentationCompleted != null && System.currentTimeMillis() - lastSegmentationCompleted!! > 1000) {
             return
         }
@@ -50,6 +56,7 @@ class SegmentationService(
 
     fun dispose() {
         segmenter.close()
+        disposed = true
     }
 
     companion object {

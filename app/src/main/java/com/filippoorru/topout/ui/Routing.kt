@@ -18,33 +18,35 @@ import com.filippoorru.topout.ui.screens.RecordScreen
 @Composable
 fun AppNavigator() {
     val navController = rememberNavController()
-    val duration = 250
+    val fadeDuration = 250
+    val slideDuration = 300
+
     NavHost(
         navController = navController,
         startDestination = Routes.Main.route,
         enterTransition = {
             slideInHorizontally(
                 initialOffsetX = { 1000 },
-                animationSpec = tween(duration, easing = LinearOutSlowInEasing)
-            ) + fadeIn(animationSpec = tween(duration))
+                animationSpec = tween(slideDuration, easing = LinearOutSlowInEasing)
+            ) + fadeIn(animationSpec = tween(fadeDuration))
         },
         exitTransition = {
             slideOutHorizontally(
                 targetOffsetX = { -1000 },
-                animationSpec = tween(duration, easing = FastOutLinearInEasing)
-            ) + fadeOut(animationSpec = tween(duration))
+                animationSpec = tween(slideDuration, easing = FastOutLinearInEasing)
+            ) + fadeOut(animationSpec = tween(fadeDuration))
         },
         popEnterTransition = {
             slideInHorizontally(
                 initialOffsetX = { -1000 },
-                animationSpec = tween(duration, easing = LinearOutSlowInEasing)
-            ) + fadeIn(animationSpec = tween(duration))
+                animationSpec = tween(slideDuration, easing = LinearOutSlowInEasing)
+            ) + fadeIn(animationSpec = tween(fadeDuration))
         },
         popExitTransition = {
             slideOutHorizontally(
                 targetOffsetX = { 1000 },
-                animationSpec = tween(duration, easing = FastOutLinearInEasing)
-            ) + fadeOut(animationSpec = tween(duration))
+                animationSpec = tween(slideDuration, easing = FastOutLinearInEasing)
+            ) + fadeOut(animationSpec = tween(fadeDuration))
         }
     ) {
         composable(Routes.Main.route) { MainScreen(navController) }

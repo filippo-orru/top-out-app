@@ -43,7 +43,13 @@ class PoseDetectorService(
     private val durations = mutableListOf<Long>()
     val averageDuration get() = durations.average().toLong()
 
+    private var disposed = false
+
     fun onDetectPose(imageProxy: ImageProxy) {
+        if (disposed) {
+            return
+        }
+
         val bitmap = BitmapImageBuilder(imageProxy.toBitmap()).build()
 
         val (result, duration) = measureTimeMillis {
@@ -68,6 +74,7 @@ class PoseDetectorService(
 
     fun dispose() {
         poseLandmarker.close()
+        disposed = true
     }
 
     companion object {
