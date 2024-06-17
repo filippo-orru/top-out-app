@@ -53,8 +53,10 @@ class RecordViewModel(
     private val climbingStateService = ClimbingStateService()//::updateClimbingState)
 
 
+    val routeVisitId = "topout-" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(System.currentTimeMillis())
+
     // Recording
-    private val recordingFileName = "topout-" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(System.currentTimeMillis()) + ".mp4"
+    private val recordingFileName = "$routeVisitId.mp4"
     private val recorder = Recorder.Builder()
         .setQualitySelector(QualitySelector.from(Quality.HD))
         .build()
@@ -130,7 +132,7 @@ class RecordViewModel(
         0.91f to 0.89f,
     )
 
-    val useCases: Array<UseCase> = arrayOf(
+    private val imageAnalyzers = arrayOf(
         ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .setResolutionSelector(
@@ -158,25 +160,36 @@ class RecordViewModel(
                     poseDetectorService.onDetectPose(imageProxy)
                 }
             },
-        VideoCapture.withOutput(recorder)
+    )
+
+    val useCases: Array<UseCase> = arrayOf(
+        VideoCapture.withOutput(recorder),
+        *imageAnalyzers
     )
 
     fun startRecording() {
         recordingStartTimestamp = System.currentTimeMillis()
         recording = pendingRecording.start({}, {})
         _recordingState.value = RecordingState.Recording(recordingStartTimestamp)
+        saveRouteVisit()
     }
 
     fun stopRecording() {
+        imageAnalyzers.forEach { it.clearAnalyzer() }
+
         poseDetectorService.dispose()
         segmentationService.dispose()
 
         recording?.stop() // File is automatically saved to MediaStore
 
+        saveRouteVisit()
+    }
+
+    private fun saveRouteVisit() {
         viewModelScope.launch {
             Database.i.routeVisits().save(
                 RouteVisitEntity(
-                    id = recordingFileName,
+                    id = routeVisitId,
                     recording = RouteVisitRecording(
                         recordingFileName,
                         climbingStateService.getClimbingStateHistory(recordingStartTimestamp)

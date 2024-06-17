@@ -17,8 +17,9 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,19 +29,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.filippoorru.topout.R
+import com.filippoorru.topout.ui.Routes
+import com.filippoorru.topout.ui.icons.RecordIcon
+import com.filippoorru.topout.ui.icons.RecordStopIcon
 import com.filippoorru.topout.ui.model.ClimbingState
 import com.filippoorru.topout.ui.model.RecordViewModel
 import com.filippoorru.topout.ui.model.RecordingState
@@ -108,12 +110,14 @@ fun RecordScreen(navController: NavController) {
         preview.setSurfaceProvider(previewView.surfaceProvider)
     }
 
-    Box(
+    Scaffold(
         modifier = Modifier.fillMaxSize(),
-    ) {
+        topBar = { TopOutAppBar() },
+        contentColor = Color(0xFF121212),
+    ) { padding ->
         Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = Color(0xFF121212),
+            modifier = Modifier.padding(padding),
+            color = Color.Black,
         ) {
             Column(
                 modifier = Modifier
@@ -139,7 +143,6 @@ fun RecordScreen(navController: NavController) {
                             .align(Alignment.Center),
                         color = Color.Black.copy(alpha = 0.15f),
                     ) {
-
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             val height = size.height
                             val width = size.width
@@ -219,77 +222,60 @@ fun RecordScreen(navController: NavController) {
                     }
                 }
 
-                IconButton(onClick = {
-                    when (recordingState) {
-                        RecordingState.NotRecording -> viewModel.startRecording()
-                        is RecordingState.Recording -> viewModel.stopRecording()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Center,
+                ) {
+                    when (climbingState) {
+                        ClimbingState.NotDetected -> {
+                            Text(
+                                "...",
+                                color = Color.White
+                            )
+                        }
+
+                        ClimbingState.Idle -> {
+                            Text(
+                                "...",
+                                color = Color.White
+                            )
+                        }
+
+                        ClimbingState.Climbing -> {
+                            Text(
+                                "🔴 Climbing 🔴",
+                                color = Color.White
+                            )
+                        }
+
                     }
-                }) {
+                }
+
+                IconButton(
+                    onClick = {
+                        when (recordingState) {
+                            RecordingState.NotRecording -> viewModel.startRecording()
+                            is RecordingState.Recording -> {
+                                viewModel.stopRecording()
+                                navController.navigate(Routes.Cut.build(viewModel.routeVisitId))
+                            }
+                        }
+                    },
+                    Modifier
+                        .scale(1.75f)
+                        .padding(16.dp)
+                ) {
                     when (recordingState) {
                         RecordingState.NotRecording -> RecordIcon()
                         is RecordingState.Recording -> RecordStopIcon()
                     }
                 }
 
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Text(
-                        viewModel.toString(),
-                        Modifier.align(Alignment.BottomCenter),
-                        color = Color.White
-                    )
-                }
-            }
-        }
-
-        Box(Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Center,
-        ) {
-            when (climbingState) {
-                ClimbingState.NotDetected -> {
-                    Text(
-                        "...",
-                        color = Color.White
-                    )
-                }
-
-                ClimbingState.Idle -> {
-                    Text(
-                        "Idle",
-                        color = Color.White
-                    )
-                }
-
-                ClimbingState.Climbing -> {
-                    Text(
-                        "🔴 REC",
-                        color = Color.White
-                    )
-                }
 
             }
         }
+
     }
-}
-
-@Composable
-fun RecordIcon() {
-    val imageVector: ImageVector = ImageVector.vectorResource(id = R.drawable.record)
-    Icon(
-        imageVector,
-        contentDescription = "Start recording",
-        tint = Color.White,
-    )
-}
-
-@Composable
-fun RecordStopIcon() {
-    val imageVector: ImageVector = ImageVector.vectorResource(id = R.drawable.record_stop)
-    Icon(
-        imageVector,
-        contentDescription = "Start recording",
-        tint = Color.White,
-    )
 }

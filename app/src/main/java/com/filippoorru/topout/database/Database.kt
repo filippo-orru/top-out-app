@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -37,7 +38,7 @@ abstract class AppDatabase : RoomDatabase() {
 
 @Dao
 interface RoutesCollection {
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(route: RouteEntity)
 
     @Query("SELECT * FROM routes WHERE id = :id")
@@ -49,7 +50,7 @@ interface RoutesCollection {
 
 @Dao
 interface RouteVisitsCollection {
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(routeVisit: RouteVisitEntity)
 
     @Query("SELECT * FROM routeVisits WHERE id = :id")
@@ -61,7 +62,7 @@ interface RouteVisitsCollection {
 
 @Dao
 interface AttemptsCollection {
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun save(attempt: AttemptEntity)
 
     @Query("SELECT * FROM attempts WHERE id = :id")
