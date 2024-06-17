@@ -48,9 +48,8 @@ class SegmentationService(
         updateState()
     }
 
-    fun close() {
+    fun dispose() {
         segmenter.close()
-
     }
 
     companion object {

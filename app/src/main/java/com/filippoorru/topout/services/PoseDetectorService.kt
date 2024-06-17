@@ -66,7 +66,7 @@ class PoseDetectorService(
         updateState()
     }
 
-    fun close() {
+    fun dispose() {
         poseLandmarker.close()
     }
 

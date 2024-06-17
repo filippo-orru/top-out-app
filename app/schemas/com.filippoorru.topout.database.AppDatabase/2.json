@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 1,
-    "identityHash": "d140c0c70e741d7fb838d14a0aad4af2",
+    "version": 2,
+    "identityHash": "8f9b3ecbe4f8d3895f42681b9aa37397",
     "entities": [
       {
         "tableName": "routes",
@@ -32,17 +32,11 @@
       },
       {
         "tableName": "routeVisits",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `routeId` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `filePath` TEXT, `climbingStateHistory` TEXT, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `filePath` TEXT, `climbingStateHistory` TEXT, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "routeId",
-            "columnName": "routeId",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -76,7 +70,7 @@
       },
       {
         "tableName": "attempts",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `routeVisitId` TEXT NOT NULL, `durationMs` INTEGER NOT NULL, `filePath` TEXT NOT NULL, `durationMs` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `routeVisitId` TEXT NOT NULL, `filePath` TEXT NOT NULL, `durationMs` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -88,12 +82,6 @@
             "fieldPath": "routeVisitId",
             "columnName": "routeVisitId",
             "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "durationMs",
-            "columnName": "durationMs",
-            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -122,7 +110,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd140c0c70e741d7fb838d14a0aad4af2')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8f9b3ecbe4f8d3895f42681b9aa37397')"
     ]
   }
 }

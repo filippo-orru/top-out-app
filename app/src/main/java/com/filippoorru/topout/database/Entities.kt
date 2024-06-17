@@ -2,7 +2,6 @@ package com.filippoorru.topout.database
 
 import androidx.room.Embedded
 import androidx.room.Entity
-import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 import androidx.room.Relation
 import com.filippoorru.topout.services.ClimbingStateHistoryItem
@@ -35,7 +34,7 @@ class RouteVisitEntity(
     @Embedded
     var recording: RouteVisitRecording?,
 
-    val routeId: String,
+//    val routeId: String,
     val timestamp: Long,
 //    var notes: String,
 )
@@ -54,24 +53,24 @@ class RouteVisitRecording(
 )
 
 @Entity(
-    foreignKeys = [ForeignKey(
-        entity = RouteVisitEntity::class,
-        parentColumns = arrayOf("id"),
-        childColumns = arrayOf("routeVisitId"),
-        onDelete = ForeignKey.CASCADE
-    )]
+    tableName = "attempts",
+//    foreignKeys = [ForeignKey(
+//        entity = RouteVisitEntity::class,
+//        parentColumns = arrayOf("id"),
+//        childColumns = arrayOf("routeVisitId"),
+//        onDelete = ForeignKey.CASCADE
+//    )]
 )
 class AttemptEntity(
     @PrimaryKey
     val id: String,
 
-    @Relation(parentColumn = "id", entityColumn = "routeVisitId")
+    //@Relation(parentColumn = "id", entityColumn = "routeVisitId")
     var routeVisitId: String,
 
     @Embedded
     val recording: AttemptRecording,
 
-    val durationMs: Long,
 //    var result: String, // top / fall / ?
 )
 

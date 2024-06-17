@@ -14,11 +14,20 @@ object Database {
     lateinit var i: AppDatabase
 
     fun init(context: Context) {
-        i = Room.databaseBuilder(context, AppDatabase::class.java, "app-database").build()
+        i = Room.databaseBuilder(context, AppDatabase::class.java, "app-database")
+            .fallbackToDestructiveMigration()
+            .build()
     }
 }
 
-@Database(entities = [RouteEntity::class, RouteVisitEntity::class], version = 1)
+@Database(
+    entities = [
+        RouteEntity::class,
+        RouteVisitEntity::class,
+        AttemptEntity::class,
+    ],
+    version = 2
+)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun routes(): RoutesCollection
@@ -29,10 +38,10 @@ abstract class AppDatabase : RoomDatabase() {
 @Dao
 interface RoutesCollection {
     @Insert
-    fun save(route: RouteEntity)
+    suspend fun save(route: RouteEntity)
 
     @Query("SELECT * FROM routes WHERE id = :id")
-    fun get(id: Int): Flow<RouteEntity?>
+    fun get(id: String): Flow<RouteEntity?>
 
     @Query("SELECT * FROM routes")
     fun getAll(): Flow<List<RouteEntity>>
@@ -41,12 +50,24 @@ interface RoutesCollection {
 @Dao
 interface RouteVisitsCollection {
     @Insert
-    fun save(routeVisit: RouteVisitEntity)
+    suspend fun save(routeVisit: RouteVisitEntity)
 
     @Query("SELECT * FROM routeVisits WHERE id = :id")
-    fun get(id: Int): Flow<RouteVisitEntity?>
+    fun get(id: String): Flow<RouteVisitEntity?>
 
     @Query("SELECT * FROM routeVisits")
     fun getAll(): Flow<List<RouteVisitEntity>>
+}
+
+@Dao
+interface AttemptsCollection {
+    @Insert
+    fun save(attempt: AttemptEntity)
+
+    @Query("SELECT * FROM attempts WHERE id = :id")
+    fun get(id: String): Flow<AttemptEntity?>
+
+    @Query("SELECT * FROM attempts")
+    fun getAll(): Flow<List<AttemptEntity>>
 }
 

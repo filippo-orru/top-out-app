@@ -1,18 +1,11 @@
 package com.filippoorru.topout.ui.screens
 
-import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.Matrix
-import android.provider.MediaStore
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.core.resolutionselector.AspectRatioStrategy
 import androidx.camera.core.resolutionselector.ResolutionSelector
-import androidx.camera.video.MediaStoreOutputOptions
-import androidx.camera.video.Quality
-import androidx.camera.video.QualitySelector
-import androidx.camera.video.Recorder
-import androidx.camera.video.VideoCapture
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement.Center
@@ -24,7 +17,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,18 +32,20 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.filippoorru.topout.R
 import com.filippoorru.topout.ui.model.ClimbingState
 import com.filippoorru.topout.ui.model.RecordViewModel
+import com.filippoorru.topout.ui.model.RecordingState
 import com.filippoorru.topout.utils.getCameraProvider
 import com.filippoorru.topout.utils.zero
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 
 @Composable
@@ -65,56 +61,22 @@ fun RecordScreen(navController: NavController) {
     val poseState by viewModel.poseState.collectAsStateWithLifecycle(lifecycleOwner)
     val segmentationState by viewModel.segmentationState.collectAsStateWithLifecycle(lifecycleOwner)
     val climbingState by viewModel.climbingState.collectAsStateWithLifecycle(lifecycleOwner)
+    val recordingState by viewModel.recordingState.collectAsStateWithLifecycle(lifecycleOwner)
 
-    val lensFacing = remember { CameraSelector.LENS_FACING_BACK }
     val previewView = remember {
         PreviewView(context).apply {
             scaleType = PreviewView.ScaleType.FIT_CENTER
         }
     }
 
-    val imageAnalyzers = remember { viewModel.getImageAnalyzers() }
-
-    val recorder = remember {
-        Recorder.Builder()
-            .setQualitySelector(
-                QualitySelector.from(Quality.HD)
-            )
-            .build()
-    }
-
-    val videoCapture = remember {
-        VideoCapture.withOutput(recorder)
-    }
-
-    val recording = remember {
-        val name = "topout-" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(System.currentTimeMillis()) + ".mp4"
-
-        val contentValues = ContentValues().apply {
-            put(MediaStore.Video.Media.DISPLAY_NAME, name)
-        }
-
-        val mediaStoreOutput = MediaStoreOutputOptions
-            .Builder(context.contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
-            .setContentValues(contentValues)
-            .build()
-
-        recorder
-            .prepareRecording(context, mediaStoreOutput)
-            .start({}, {})
-    }
-
     // Execute when closing the screen
     DisposableEffect(Unit) {
         onDispose {
-            imageAnalyzers.forEach { it.clearAnalyzer() }
-            viewModel.close()
-            recording.stop()
-            println("RecordScreen disposed")
+            viewModel.stopRecording()
         }
     }
 
-    LaunchedEffect(lensFacing) {
+    LaunchedEffect(Unit) {
         val cameraProvider = getCameraProvider(context)
         cameraProvider.unbindAll()
         val preview = Preview.Builder()
@@ -125,7 +87,7 @@ fun RecordScreen(navController: NavController) {
             )
             .build()
         val cameraSelector = CameraSelector.Builder()
-            .requireLensFacing(lensFacing)
+            .requireLensFacing(CameraSelector.LENS_FACING_BACK)
             .addCameraFilter { cameraInfos ->
                 val wideAngle = cameraInfos.firstOrNull { it.intrinsicZoomRatio < 1.0 }
                 if (wideAngle != null) {
@@ -141,8 +103,7 @@ fun RecordScreen(navController: NavController) {
             lifecycleOwner,
             cameraSelector,
             preview,
-            *imageAnalyzers,
-            videoCapture,
+            *viewModel.useCases,
         )
         preview.setSurfaceProvider(previewView.surfaceProvider)
     }
@@ -258,8 +219,16 @@ fun RecordScreen(navController: NavController) {
                     }
                 }
 
-                Button(onClick = { recording.stop() }) {
-                    Text("Stop recording")
+                IconButton(onClick = {
+                    when (recordingState) {
+                        RecordingState.NotRecording -> viewModel.startRecording()
+                        is RecordingState.Recording -> viewModel.stopRecording()
+                    }
+                }) {
+                    when (recordingState) {
+                        RecordingState.NotRecording -> RecordIcon()
+                        is RecordingState.Recording -> RecordStopIcon()
+                    }
                 }
 
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -303,4 +272,24 @@ fun RecordScreen(navController: NavController) {
             }
         }
     }
+}
+
+@Composable
+fun RecordIcon() {
+    val imageVector: ImageVector = ImageVector.vectorResource(id = R.drawable.record)
+    Icon(
+        imageVector,
+        contentDescription = "Start recording",
+        tint = Color.White,
+    )
+}
+
+@Composable
+fun RecordStopIcon() {
+    val imageVector: ImageVector = ImageVector.vectorResource(id = R.drawable.record_stop)
+    Icon(
+        imageVector,
+        contentDescription = "Start recording",
+        tint = Color.White,
+    )
 }

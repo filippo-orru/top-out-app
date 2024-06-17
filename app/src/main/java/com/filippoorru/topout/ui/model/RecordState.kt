@@ -1,9 +1,22 @@
 package com.filippoorru.topout.ui.model
 
+import android.content.ContentValues
 import android.content.Context
+import android.provider.MediaStore
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.UseCase
 import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.video.MediaStoreOutputOptions
+import androidx.camera.video.Quality
+import androidx.camera.video.QualitySelector
+import androidx.camera.video.Recorder
+import androidx.camera.video.Recording
+import androidx.camera.video.VideoCapture
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.filippoorru.topout.database.Database
+import com.filippoorru.topout.database.RouteVisitEntity
+import com.filippoorru.topout.database.RouteVisitRecording
 import com.filippoorru.topout.services.ClimbingStateService
 import com.filippoorru.topout.services.PoseDetectorService
 import com.filippoorru.topout.services.PoseDetectorService.Companion.getSurroundingTrackingPoints
@@ -11,12 +24,16 @@ import com.filippoorru.topout.services.SegmentationService
 import com.filippoorru.topout.utils.zero
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 import java.util.concurrent.Executors
 
 
 class RecordViewModel(
     context: Context,
 ) : ViewModel() {
+    // State
     private val _poseState = MutableStateFlow<PoseState?>(null)
     val poseState = _poseState.asStateFlow()
 
@@ -26,9 +43,36 @@ class RecordViewModel(
     private val _climbingState = MutableStateFlow(ClimbingState.NotDetected)
     val climbingState = _climbingState.asStateFlow()
 
+    private val _recordingState = MutableStateFlow<RecordingState>(RecordingState.NotRecording)
+    val recordingState = _recordingState.asStateFlow()
+
+
+    // Detector services
     private val poseDetectorService = PoseDetectorService(context, ::updatePoseState)
     private val segmentationService = SegmentationService(context, ::updateSegmentationState)
     private val climbingStateService = ClimbingStateService()//::updateClimbingState)
+
+
+    // Recording
+    private val recordingFileName = "topout-" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(System.currentTimeMillis()) + ".mp4"
+    private val recorder = Recorder.Builder()
+        .setQualitySelector(QualitySelector.from(Quality.HD))
+        .build()
+    private var recordingStartTimestamp = 0L
+    private val pendingRecording = run {
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Video.Media.DISPLAY_NAME, recordingFileName)
+        }
+
+        val mediaStoreOutput = MediaStoreOutputOptions
+            .Builder(context.contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
+            .setContentValues(contentValues)
+            .build()
+
+        recorder.prepareRecording(context, mediaStoreOutput)
+    }
+    private var recording: Recording? = null
+
 
     private fun updatePoseState() {
         _poseState.value = poseDetectorService.landmarks?.let { person ->
@@ -86,49 +130,71 @@ class RecordViewModel(
         0.91f to 0.89f,
     )
 
-    fun getImageAnalyzers(): Array<ImageAnalysis> {
-        return arrayOf(
-            ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .setResolutionSelector(
-                    ResolutionSelector.Builder()
-                        .setAllowedResolutionMode(ResolutionSelector.PREFER_CAPTURE_RATE_OVER_HIGHER_RESOLUTION)
-                        .build()
-                )
-                .build()
-                .apply {
-                    setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy ->
-                        segmentationService.onSegmentImage(imageProxy, segmentationPoints)
-                    }
-                },
-
-            ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .setResolutionSelector(
-                    ResolutionSelector.Builder()
-                        .setAllowedResolutionMode(ResolutionSelector.PREFER_CAPTURE_RATE_OVER_HIGHER_RESOLUTION)
-                        .build()
-                )
-                .build()
-                .apply {
-                    setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy ->
-                        poseDetectorService.onDetectPose(imageProxy)
-                    }
+    val useCases: Array<UseCase> = arrayOf(
+        ImageAnalysis.Builder()
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .setResolutionSelector(
+                ResolutionSelector.Builder()
+                    .setAllowedResolutionMode(ResolutionSelector.PREFER_CAPTURE_RATE_OVER_HIGHER_RESOLUTION)
+                    .build()
+            )
+            .build()
+            .apply {
+                setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy ->
+                    segmentationService.onSegmentImage(imageProxy, segmentationPoints)
                 }
-        )
+            },
+
+        ImageAnalysis.Builder()
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .setResolutionSelector(
+                ResolutionSelector.Builder()
+                    .setAllowedResolutionMode(ResolutionSelector.PREFER_CAPTURE_RATE_OVER_HIGHER_RESOLUTION)
+                    .build()
+            )
+            .build()
+            .apply {
+                setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy ->
+                    poseDetectorService.onDetectPose(imageProxy)
+                }
+            },
+        VideoCapture.withOutput(recorder)
+    )
+
+    fun startRecording() {
+        recordingStartTimestamp = System.currentTimeMillis()
+        recording = pendingRecording.start({}, {})
+        _recordingState.value = RecordingState.Recording(recordingStartTimestamp)
     }
 
-    fun close() {
-        poseDetectorService.close()
-        segmentationService.close()
+    fun stopRecording() {
+        poseDetectorService.dispose()
+        segmentationService.dispose()
+
+        recording?.stop() // File is automatically saved to MediaStore
+
+        viewModelScope.launch {
+            Database.i.routeVisits().save(
+                RouteVisitEntity(
+                    id = recordingFileName,
+                    recording = RouteVisitRecording(
+                        recordingFileName,
+                        climbingStateService.getClimbingStateHistory(recordingStartTimestamp)
+                    ),
+                    timestamp = recordingStartTimestamp,
+                )
+            )
+        }
     }
 
     override fun toString(): String {
-        return "RecordViewModel(" +
-                "poseState=${poseState.value}, " +
-                "segmentationState=${segmentationState.value}, " +
-                "climbingState=${climbingState.value}" +
-                ")"
+        return """
+            RecordViewModel(
+                poseState=${poseState.value},
+                segmentationState=${segmentationState.value},
+                climbingState=${climbingState.value}
+            )
+        """.trimIndent()
     }
 }
 
@@ -170,4 +236,9 @@ class SegmentationState(
     override fun toString(): String {
         return "SegmentationState(mask.size=${mask.size}, width=$width, height=$height, averageDuration=$averageDuration)"
     }
+}
+
+sealed class RecordingState {
+    data class Recording(val startTimestamp: Long) : RecordingState()
+    data object NotRecording : RecordingState()
 }
