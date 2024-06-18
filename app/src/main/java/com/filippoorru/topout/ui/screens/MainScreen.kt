@@ -1,8 +1,5 @@
 package com.filippoorru.topout.ui.screens
 
-import android.media.ThumbnailUtils
-import android.os.Build
-import android.provider.MediaStore
 import android.util.Size
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -47,6 +44,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.filippoorru.topout.ui.Center
 import com.filippoorru.topout.ui.Routes
+import com.filippoorru.topout.ui.createVideoThumbnail
 import com.filippoorru.topout.ui.icons.ClimberIcon
 import com.filippoorru.topout.ui.model.AppViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -76,7 +74,7 @@ fun MainScreen(
     val routeVisits by viewModel.routeVisits.collectAsState()
 
     Scaffold(
-        topBar = { TopOutAppBar() },
+        topBar = { TopOutAppBar(title = "TopOut") },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
@@ -139,7 +137,9 @@ fun MainScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         val simpleDateFormat = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault())
-                        val grouped = visits.groupBy { simpleDateFormat.format(Date(it.timestamp)) }
+                        val grouped = visits
+                            .sortedByDescending { it.timestamp }
+                            .groupBy { simpleDateFormat.format(Date(it.timestamp)) }
                         for ((dayString, visitsOnDay) in grouped) {
                             Text(
                                 dayString,
@@ -162,23 +162,12 @@ fun MainScreen(
                                                 .fillMaxWidth()
                                                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                                         ) {
-                                            @Suppress("DEPRECATION")
                                             val thumbnail = remember {
-                                                val file = File(routeVisit.recording.filePath)
-                                                val bitmap = try {
-                                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                                        ThumbnailUtils.createVideoThumbnail(file, Size(1080, 512), null)
-                                                    } else {
-                                                        ThumbnailUtils.createVideoThumbnail(
-                                                            file.absolutePath,
-                                                            MediaStore.Images.Thumbnails.FULL_SCREEN_KIND
-                                                        )
-                                                    }
-                                                } catch (e: Exception) {
-                                                    null
-                                                }
-
-                                                bitmap?.asImageBitmap()
+                                                createVideoThumbnail(
+                                                    File(routeVisit.recording.filePath),
+                                                    Size(512, 512),
+                                                    desiredTimestamp = null
+                                                )?.asImageBitmap()
                                             }
 
                                             Box(
@@ -232,9 +221,10 @@ fun MainScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 fun TopOutAppBar(
     navigateBack: (() -> Unit)? = null,
+    title: String = "TopOut",
 ) {
     TopAppBar(
-        title = { Text("TopOut") },
+        title = { Text(title) },
         colors = topAppBarColors().copy(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant

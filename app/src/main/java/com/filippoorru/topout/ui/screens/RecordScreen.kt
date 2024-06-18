@@ -112,7 +112,7 @@ fun RecordScreen(navController: NavController) {
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        topBar = { TopOutAppBar() },
+        topBar = { TopOutAppBar(title = "TopOut") },
         contentColor = Color(0xFF121212),
     ) { padding ->
         Surface(

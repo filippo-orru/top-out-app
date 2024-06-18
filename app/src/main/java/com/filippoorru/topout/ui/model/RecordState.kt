@@ -198,9 +198,9 @@ class RecordViewModel(
             )
 
             Database.i.attempts().saveAll(
-                attempts.map { attempt ->
+                attempts.mapIndexed { index, attempt ->
                     AttemptEntity(
-                        id = "attempt-$routeVisitId-${attempt.startMs}",
+                        id = "attempt-$routeVisitId-$index",
                         routeVisitId = routeVisitId,
                         partOfRouteVisitRecording = PartOfRouteVisitRecording(
                             startMs = attempt.startMs,
