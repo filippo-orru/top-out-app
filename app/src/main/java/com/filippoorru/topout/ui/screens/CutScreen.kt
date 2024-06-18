@@ -1,5 +1,6 @@
 package com.filippoorru.topout.ui.screens
 
+import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,12 +26,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavHostController
@@ -40,7 +44,9 @@ import com.arthenica.ffmpegkit.ReturnCode
 import com.filippoorru.topout.ui.Center
 import com.filippoorru.topout.ui.model.CutScreenModel
 import java.io.File
+import java.text.DecimalFormat
 
+@OptIn(UnstableApi::class)
 @Composable
 fun CutScreen(navController: NavHostController, routeVisitId: String, attemptId: String) {
     fun cutFile(path: String, newPath: String, startTimestamp: Int, endTimestamp: Int) {
@@ -106,11 +112,25 @@ fun CutScreen(navController: NavHostController, routeVisitId: String, attemptId:
                     }
                 }
 
-                // TODO remove player controls
                 val playerView = remember {
                     PlayerView(context).apply {
+                        setShowSubtitleButton(false)
+                        setShowNextButton(false)
+                        setShowPreviousButton(false)
+                        setShowFastForwardButton(false)
+                        setShowRewindButton(false)
                         player = exoPlayer
                     }
+                }
+
+                fun Long.formatTime(): String {
+                    val min = this.coerceAtLeast(0)
+                    val clamped = exoPlayer.duration.takeIf { it != C.TIME_UNSET }?.let { min.coerceAtMost(it) } ?: min
+
+                    val format = DecimalFormat("00")
+                    val seconds = format.format((clamped / 1000) % 60)
+                    val minutes = format.format((clamped / 1000 / 60))
+                    return "${minutes}:${seconds}"
                 }
 
                 Column(
@@ -139,13 +159,15 @@ fun CutScreen(navController: NavHostController, routeVisitId: String, attemptId:
                             Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            if (cutStart.value != null) {
-                                Text("Cut Start: ${cutStart.value}")
+                            val start = cutStart.value
+                            if (start != null) {
+                                Text("Cut Start: ${start.formatTime()}")
                             } else {
                                 Box {}
                             }
-                            if (cutEnd.value != null) {
-                                Text("Cut End: ${cutEnd.value}")
+                            val end = cutEnd.value
+                            if (end != null) {
+                                Text("Cut End: ${end.formatTime()}")
                             } else {
                                 Box {}
                             }
@@ -158,14 +180,14 @@ fun CutScreen(navController: NavHostController, routeVisitId: String, attemptId:
                             Button(onClick = {
                                 cutStart.value = exoPlayer.currentPosition
                             }) {
-                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, Modifier.padding(end = 8.dp))
                                 Text("Cut Start")
                             }
 
                             Button(onClick = {
                                 cutEnd.value = exoPlayer.currentPosition
                             }) {
-                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null)
+                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null, Modifier.padding(end = 8.dp))
                                 Text("Cut End")
                             }
                         }
@@ -173,7 +195,7 @@ fun CutScreen(navController: NavHostController, routeVisitId: String, attemptId:
                         Column(
                             Modifier
                                 .fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.Bottom),
                         ) {
 
                             // divider

@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -24,6 +26,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -31,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -87,7 +91,7 @@ fun ViewRouteVisitScreen(navController: NavHostController, routeVisitId: String)
                     attempts.forEachIndexed { index, attempt ->
                         Card(
                             onClick = {
-                                navController.navigate(Routes.Cut.build(routeVisitId, attempt.id))
+                                navController.navigate(Routes.ViewAttempt.build(routeVisitId, attempt.id))
                             },
                             Modifier
                                 .fillMaxWidth()
@@ -117,7 +121,22 @@ fun ViewRouteVisitScreen(navController: NavHostController, routeVisitId: String)
                                             Modifier.fillMaxSize(),
                                             contentScale = ContentScale.Crop
                                         )
-                                        Icon(Icons.Default.PlayArrow, contentDescription = null, Modifier.align(Alignment.Center))
+                                        Surface(
+                                            Modifier
+                                                .width(64.dp)
+                                                .height(64.dp)
+                                                .align(Alignment.Center),
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.33f),
+                                        ) {}
+                                        Icon(
+                                            Icons.Default.PlayArrow,
+                                            contentDescription = null,
+                                            Modifier
+                                                .align(Alignment.Center)
+                                                .scale(1.3f),
+                                            tint = MaterialTheme.colorScheme.onPrimary
+                                        )
                                     } else {
                                         Center {
                                             Text(

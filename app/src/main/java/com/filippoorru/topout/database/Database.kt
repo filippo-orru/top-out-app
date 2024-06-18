@@ -63,5 +63,8 @@ interface AttemptsCollection {
 
     @Query("SELECT * FROM attempts")
     fun getAll(): Flow<List<AttemptEntity>>
+
+    @Query("DELETE FROM attempts WHERE id = :attemptId")
+    suspend fun delete(attemptId: String)
 }
 

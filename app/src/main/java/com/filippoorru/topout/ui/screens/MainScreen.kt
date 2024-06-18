@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -25,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
@@ -33,20 +36,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.filippoorru.topout.ui.Center
 import com.filippoorru.topout.ui.Routes
 import com.filippoorru.topout.ui.createVideoThumbnail
 import com.filippoorru.topout.ui.icons.ClimberIcon
-import com.filippoorru.topout.ui.model.AppViewModel
+import com.filippoorru.topout.ui.model.MainScreenViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.isGranted
@@ -60,7 +61,7 @@ import java.util.Locale
 @Composable
 fun MainScreen(
     navController: NavController,
-    viewModel: AppViewModel = viewModel(AppViewModel::class),
+    viewModel: MainScreenViewModel = viewModel(MainScreenViewModel::class),
 ) {
     val cameraPermissionState: PermissionState = rememberPermissionState(android.Manifest.permission.CAMERA)
 
@@ -68,10 +69,6 @@ fun MainScreen(
         cameraPermissionState.launchPermissionRequest()
     }
 
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-
-    val routeVisits by viewModel.routeVisits.collectAsState()
 
     Scaffold(
         topBar = { TopOutAppBar(title = "TopOut") },
@@ -80,16 +77,6 @@ fun MainScreen(
                 onClick = {
                     if (cameraPermissionState.status.isGranted) {
                         navController.navigate(Routes.Record.route)
-//                        coroutineScope.launch {
-//                            Database.i.routeVisits().save(
-//                                RouteVisitEntity(
-//                                    id = Random.nextLong().toString(),
-//                                    recording = null,
-////                                    routeId = "routeidtest",
-//                                    timestamp = System.currentTimeMillis(),
-//                                )
-//                            )
-//                        }
                     } else {
                         cameraPermissionState.launchPermissionRequest()
                     }
@@ -103,7 +90,11 @@ fun MainScreen(
         Box(
             Modifier.padding(padding),
         ) {
+            val routeVisits by viewModel.routeVisits.collectAsState()
             val visits = routeVisits
+
+            val attempts by viewModel.attempts.collectAsState()
+
             if (visits == null) {
                 CircularProgressIndicator()
 
@@ -131,24 +122,22 @@ fun MainScreen(
                     Column(
                         Modifier
                             .fillMaxSize()
-                            .padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 64.dp)
+                            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 64.dp)
                             .verticalScroll(rememberScrollState()),
                         horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(24.dp),
                     ) {
-                        val simpleDateFormat = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault())
-                        val grouped = visits
-                            .sortedByDescending { it.timestamp }
-                            .groupBy { simpleDateFormat.format(Date(it.timestamp)) }
-                        for ((dayString, visitsOnDay) in grouped) {
-                            Text(
-                                dayString,
-                                Modifier.padding(top = 16.dp, start = 8.dp, bottom = 8.dp),
-                            )
+                        for ((dayString, visitsOnDay) in visits) {
+                            if (visits.size > 1) {
+                                Text(
+                                    dayString,
+                                    Modifier.padding(top = 16.dp, start = 8.dp, bottom = 8.dp),
+                                )
+                            }
 
                             for (routeVisit in visitsOnDay) {
                                 Card(
-                                    onClick = { navController.navigate(Routes.View.build(routeVisit.id)) },
+                                    onClick = { navController.navigate(Routes.ViewRouteVisit.build(routeVisit.id)) },
                                     modifier = Modifier,
                                 ) {
                                     Column(
@@ -160,7 +149,7 @@ fun MainScreen(
                                             Modifier
                                                 .height(196.dp)
                                                 .fillMaxWidth()
-                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
                                         ) {
                                             val thumbnail = remember {
                                                 createVideoThumbnail(
@@ -180,12 +169,29 @@ fun MainScreen(
                                                         Modifier.fillMaxSize(),
                                                         contentScale = ContentScale.Crop
                                                     )
+                                                    Surface(
+                                                        Modifier
+                                                            .width(64.dp)
+                                                            .height(64.dp)
+                                                            .align(Alignment.Center),
+                                                        shape = CircleShape,
+                                                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.33f),
+                                                    ) {}
+                                                    Text(
+                                                        attempts.count { it.routeVisitId == routeVisit.id }.toString(),
+                                                        Modifier
+                                                            .align(Alignment.Center)
+                                                            .scale(1.3f),
+                                                        color = MaterialTheme.colorScheme.onPrimary,
+                                                    )
                                                 } else {
-                                                    Center {
+                                                    Box(
+                                                        contentAlignment = Alignment.Center,
+                                                    ) {
                                                         Text(
                                                             "Thumbnail not available",
-                                                            Modifier.fillMaxSize(),
                                                             style = MaterialTheme.typography.labelMedium,
+                                                            color = MaterialTheme.colorScheme.onPrimary,
                                                         )
                                                     }
                                                 }

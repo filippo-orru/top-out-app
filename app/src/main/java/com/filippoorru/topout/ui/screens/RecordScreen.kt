@@ -259,7 +259,7 @@ fun RecordScreen(navController: NavController) {
                             RecordingState.NotRecording -> viewModel.startRecording()
                             is RecordingState.Recording -> {
                                 viewModel.stopRecording()
-                                navController.navigate(Routes.View.build(viewModel.routeVisitId))
+                                navController.navigate(Routes.ViewRouteVisit.build(viewModel.routeVisitId))
                             }
                         }
                     },
