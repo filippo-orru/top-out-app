@@ -2,37 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "dde04121380878ba8ff49ffc93332dde",
+    "identityHash": "86299a8df54117947dca24dbed289e71",
     "entities": [
       {
-        "tableName": "routes",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `image` TEXT NOT NULL, PRIMARY KEY(`id`))",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "image",
-            "columnName": "image",
-            "affinity": "TEXT",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "id"
-          ]
-        },
-        "indices": [],
-        "foreignKeys": []
-      },
-      {
         "tableName": "routeVisits",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `filePath` TEXT NOT NULL, `climbingStateHistory` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `filePath` TEXT NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -51,12 +25,6 @@
             "columnName": "filePath",
             "affinity": "TEXT",
             "notNull": true
-          },
-          {
-            "fieldPath": "recording.climbingStateHistory",
-            "columnName": "climbingStateHistory",
-            "affinity": "TEXT",
-            "notNull": true
           }
         ],
         "primaryKey": {
@@ -70,7 +38,7 @@
       },
       {
         "tableName": "attempts",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `routeVisitId` TEXT NOT NULL, `filePath` TEXT NOT NULL, `durationMs` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `routeVisitId` TEXT NOT NULL, `startMs` INTEGER, `endMs` INTEGER, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -85,16 +53,16 @@
             "notNull": true
           },
           {
-            "fieldPath": "recording.filePath",
-            "columnName": "filePath",
-            "affinity": "TEXT",
-            "notNull": true
+            "fieldPath": "partOfRouteVisitRecording.startMs",
+            "columnName": "startMs",
+            "affinity": "INTEGER",
+            "notNull": false
           },
           {
-            "fieldPath": "recording.durationMs",
-            "columnName": "durationMs",
+            "fieldPath": "partOfRouteVisitRecording.endMs",
+            "columnName": "endMs",
             "affinity": "INTEGER",
-            "notNull": true
+            "notNull": false
           }
         ],
         "primaryKey": {
@@ -110,7 +78,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'dde04121380878ba8ff49ffc93332dde')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '86299a8df54117947dca24dbed289e71')"
     ]
   }
 }

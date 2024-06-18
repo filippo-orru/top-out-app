@@ -1,10 +1,10 @@
 package com.filippoorru.topout.ui.screens
 
 import android.media.ThumbnailUtils
-import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Size
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,11 +39,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.filippoorru.topout.ui.Center
 import com.filippoorru.topout.ui.Routes
 import com.filippoorru.topout.ui.icons.ClimberIcon
 import com.filippoorru.topout.ui.model.AppViewModel
@@ -146,47 +148,75 @@ fun MainScreen(
 
                             for (routeVisit in visitsOnDay) {
                                 Card(
-                                    onClick = { navController.navigate(Routes.Cut.build(routeVisit.id)) },
+                                    onClick = { navController.navigate(Routes.View.build(routeVisit.id)) },
                                     modifier = Modifier,
                                 ) {
                                     Column(
                                         Modifier,
                                         horizontalAlignment = Alignment.Start,
                                     ) {
+
                                         Box(
                                             Modifier
-                                                .height(128.dp)
+                                                .height(196.dp)
                                                 .fillMaxWidth()
                                                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                                         ) {
                                             @Suppress("DEPRECATION")
                                             val thumbnail = remember {
                                                 val file = File(routeVisit.recording.filePath)
-                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                                    context.contentResolver.loadThumbnail(Uri.fromFile(file), Size(512, 384), null)
-                                                } else {
-                                                    ThumbnailUtils.createVideoThumbnail(
-                                                        file.absolutePath,
-                                                        MediaStore.Images.Thumbnails.MINI_KIND
+                                                val bitmap = try {
+                                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                                        ThumbnailUtils.createVideoThumbnail(file, Size(1080, 512), null)
+                                                    } else {
+                                                        ThumbnailUtils.createVideoThumbnail(
+                                                            file.absolutePath,
+                                                            MediaStore.Images.Thumbnails.FULL_SCREEN_KIND
+                                                        )
+                                                    }
+                                                } catch (e: Exception) {
+                                                    null
+                                                }
+
+                                                bitmap?.asImageBitmap()
+                                            }
+
+                                            Box(
+                                                Modifier.fillMaxSize(),
+                                            ) {
+                                                if (thumbnail != null) {
+                                                    Image(
+                                                        thumbnail,
+                                                        contentDescription = "Thumbnail",
+                                                        Modifier.fillMaxSize(),
+                                                        contentScale = ContentScale.Crop
                                                     )
+                                                } else {
+                                                    Center {
+                                                        Text(
+                                                            "Thumbnail not available",
+                                                            Modifier.fillMaxSize(),
+                                                            style = MaterialTheme.typography.labelMedium,
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
+                                    }
 
-                                        Row(
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .padding(16.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        ) {
-                                            ClimberIcon(Color.Black.copy(alpha = 0.7f))
+                                    Row(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        ClimberIcon(MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
 
-                                            Text(
-                                                SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(routeVisit.timestamp)),
-                                                Modifier,
-                                            )
-                                        }
+                                        Text(
+                                            SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(routeVisit.timestamp)),
+                                            Modifier,
+                                        )
                                     }
                                 }
                             }
@@ -206,8 +236,8 @@ fun TopOutAppBar(
     TopAppBar(
         title = { Text("TopOut") },
         colors = topAppBarColors().copy(
-            containerColor = MaterialTheme.colorScheme.primary,
-            titleContentColor = MaterialTheme.colorScheme.onPrimary
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant
         ),
         navigationIcon = {
             if (navigateBack != null) {

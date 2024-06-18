@@ -10,17 +10,19 @@ class ClimbingStateService {
         climbingStateHistory.add(ClimbingStateHistoryItem(climbingState, timestamp))
     }
 
-    fun getClimbingStateHistory(
-        startTimestamp: Long,
-    ): List<ClimbingStateHistoryItem> {
+    fun getAttempts(startTimestamp: Long): List<Attempt> {
         val minDuration = 1000L
 
-        val computed = mutableListOf<ClimbingStateHistoryItem>()
+        val attempts = mutableListOf<Attempt>()
 
         var first = ClimbingStateHistoryItem(ClimbingState.Idle, startTimestamp)
         var last: ClimbingStateHistoryItem? = null
 
-        val history = climbingStateHistory + ClimbingStateHistoryItem(ClimbingState.Idle, Long.MAX_VALUE)
+        val history = climbingStateHistory +
+                ClimbingStateHistoryItem(
+                    ClimbingState.Idle,
+                    Long.MAX_VALUE
+                ) // Make sure to process the last attempt if the history ends with a climbing state
 
         for (climb in history) {
             if (last == null) {
@@ -34,10 +36,10 @@ class ClimbingStateService {
                         listOf(first.timestamp, first.timestamp, last.timestamp).average().toLong()
                     }
 
-                    computed.add(
-                        ClimbingStateHistoryItem(
-                            climbingState = last.climbingState,
-                            timestamp = timestamp
+                    attempts.add(
+                        Attempt(
+                            startMs = timestamp - startTimestamp,
+                            endMs = climb.timestamp - startTimestamp
                         )
                     )
                 }
@@ -48,9 +50,16 @@ class ClimbingStateService {
             }
         }
 
-        return computed.toList()
+        return attempts.toList()
     }
 }
+
+class Attempt(
+    // Times are relative to the start of the route visit recording
+    // Might need to be clamped to the actual recording duration
+    val startMs: Long,
+    val endMs: Long,
+)
 
 @JsonClass(generateAdapter = true)
 class ClimbingStateHistoryItem(

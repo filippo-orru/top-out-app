@@ -1,5 +1,6 @@
 package com.filippoorru.topout.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -36,9 +38,10 @@ import com.filippoorru.topout.ui.Center
 import java.io.File
 
 @Composable
-fun CutScreen(navController: NavHostController, routeVisitId: String) {
+fun CutScreen(navController: NavHostController, routeVisitId: String, attemptId: String) {
+
     fun cutFile(path: String, newPath: String, startTimestamp: Int, endTimestamp: Int) {
-        val session: FFmpegSession = FFmpegKit.execute("-i $path -ss $startTimestamp -to $endTimestamp -c copy $newPath")
+        val session: FFmpegSession = FFmpegKit.execute("-y -i $path -ss $startTimestamp -to $endTimestamp -c copy $newPath")
         when (session.returnCode.value) {
             ReturnCode.SUCCESS -> println("Cutting successful")
             ReturnCode.CANCEL -> println("Cutting cancelled")
@@ -90,7 +93,7 @@ fun CutScreen(navController: NavHostController, routeVisitId: String) {
                 }
 
             } else {
-                recording!! // Safe to unwrap here because recordingMediaItem is not null
+                recording!! // Safe to unwrap here because fileExists
 
                 val context = LocalContext.current
 
@@ -106,6 +109,13 @@ fun CutScreen(navController: NavHostController, routeVisitId: String) {
                     }
                 }
 
+                // TODO remove player controls
+                val playerView = remember {
+                    PlayerView(context).apply {
+                        player = exoPlayer
+                    }
+                }
+
                 Column(
                     Modifier.fillMaxSize(),
 
@@ -113,12 +123,11 @@ fun CutScreen(navController: NavHostController, routeVisitId: String) {
                     Text("Cutting ${visit.id}", Modifier.padding(16.dp))
 
                     AndroidView(
-                        factory = { ctx ->
-                            PlayerView(ctx).apply {
-                                player = exoPlayer
-                            }
+                        factory = {
+                            playerView
                         },
                         modifier = Modifier
+                            .background(Color.Black)
                             .fillMaxWidth()
                             .fillMaxHeight(0.4f)
                     )
@@ -130,12 +139,9 @@ fun CutScreen(navController: NavHostController, routeVisitId: String) {
                         horizontalAlignment = Alignment.Start,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(
-                            "File: ${recording.filePath}",
-                        )
-                        Text(
-                            "Climbing state history: ${recording.climbingStateHistory}",
-                        )
+                        // Player seek & cut bar
+                        // divider
+                        // cancel & save buttons
                     }
                 }
             }

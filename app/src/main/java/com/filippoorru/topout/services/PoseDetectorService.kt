@@ -5,6 +5,7 @@ import androidx.camera.core.ImageProxy
 import com.filippoorru.topout.utils.OneEuroFilter
 import com.filippoorru.topout.utils.emptyToNull
 import com.filippoorru.topout.utils.measureTimeMillis
+import com.google.mediapipe.framework.MediaPipeException
 import com.google.mediapipe.framework.image.BitmapImageBuilder
 import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
 import com.google.mediapipe.tasks.core.BaseOptions
@@ -53,7 +54,11 @@ class PoseDetectorService(
         val bitmap = BitmapImageBuilder(imageProxy.toBitmap()).build()
 
         val (result, duration) = measureTimeMillis {
-            poseLandmarker.detectForVideo(bitmap, imageProxy.imageInfo.timestamp)
+            try {
+                poseLandmarker.detectForVideo(bitmap, imageProxy.imageInfo.timestamp)
+            } catch (e: MediaPipeException) {
+                return // Sometimes the underlying ML library throws
+            }
         }
 
         result.landmarks().firstOrNull()?.let { person ->

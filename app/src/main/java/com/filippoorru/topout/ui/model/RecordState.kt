@@ -13,7 +13,9 @@ import androidx.camera.video.Recording
 import androidx.camera.video.VideoCapture
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.filippoorru.topout.database.AttemptEntity
 import com.filippoorru.topout.database.Database
+import com.filippoorru.topout.database.PartOfRouteVisitRecording
 import com.filippoorru.topout.database.RouteVisitEntity
 import com.filippoorru.topout.database.RouteVisitRecording
 import com.filippoorru.topout.services.ClimbingStateService
@@ -184,15 +186,28 @@ class RecordViewModel(
 
     private fun saveRouteVisit() {
         viewModelScope.launch {
+            val attempts = climbingStateService.getAttempts(recordingStartTimestamp)
             Database.i.routeVisits().save(
                 RouteVisitEntity(
                     id = routeVisitId,
                     recording = RouteVisitRecording(
                         outputOptions.file.absolutePath,
-                        climbingStateService.getClimbingStateHistory(recordingStartTimestamp)
                     ),
                     timestamp = recordingStartTimestamp,
                 )
+            )
+
+            Database.i.attempts().saveAll(
+                attempts.map { attempt ->
+                    AttemptEntity(
+                        id = "attempt-$routeVisitId-${attempt.startMs}",
+                        routeVisitId = routeVisitId,
+                        partOfRouteVisitRecording = PartOfRouteVisitRecording(
+                            startMs = attempt.startMs,
+                            endMs = attempt.endMs,
+                        ),
+                    )
+                }
             )
         }
     }

@@ -23,7 +23,6 @@ object Database {
 
 @Database(
     entities = [
-        RouteEntity::class,
         RouteVisitEntity::class,
         AttemptEntity::class,
     ],
@@ -31,21 +30,9 @@ object Database {
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun routes(): RoutesCollection
-
     abstract fun routeVisits(): RouteVisitsCollection
-}
 
-@Dao
-interface RoutesCollection {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun save(route: RouteEntity)
-
-    @Query("SELECT * FROM routes WHERE id = :id")
-    fun get(id: String): Flow<RouteEntity?>
-
-    @Query("SELECT * FROM routes")
-    fun getAll(): Flow<List<RouteEntity>>
+    abstract fun attempts(): AttemptsCollection
 }
 
 @Dao
@@ -63,10 +50,16 @@ interface RouteVisitsCollection {
 @Dao
 interface AttemptsCollection {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun save(attempt: AttemptEntity)
+    suspend fun save(attempt: AttemptEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun saveAll(attempts: List<AttemptEntity>)
 
     @Query("SELECT * FROM attempts WHERE id = :id")
     fun get(id: String): Flow<AttemptEntity?>
+
+    @Query("SELECT * FROM attempts WHERE routeVisitId = :routeVisitId")
+    fun getByRouteVisit(routeVisitId: String): Flow<List<AttemptEntity>>
 
     @Query("SELECT * FROM attempts")
     fun getAll(): Flow<List<AttemptEntity>>
