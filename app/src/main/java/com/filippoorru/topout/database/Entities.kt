@@ -22,7 +22,7 @@ class RouteVisitRecording(
 )
 
 @Entity(tableName = "attempts")
-class AttemptEntity(
+data class AttemptEntity(
     @PrimaryKey
     val id: String,
 
@@ -43,7 +43,7 @@ class AttemptRecording(
     val durationMs: Long,
 )
 
-class PartOfRouteVisitRecording(
+data class PartOfRouteVisitRecording(
     val startMs: Long,
     val endMs: Long,
 )

@@ -106,7 +106,7 @@ fun ViewAttemptScreen(navController: NavHostController, routeVisitId: String, at
                     }
                 }
 
-                // TODO remove player controls
+                // TODO only play attempt time range
                 val playerView = remember {
                     PlayerView(context).apply {
                         setShowSubtitleButton(false)

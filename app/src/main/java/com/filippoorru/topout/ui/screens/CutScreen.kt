@@ -38,9 +38,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavHostController
-import com.arthenica.ffmpegkit.FFmpegKit
-import com.arthenica.ffmpegkit.FFmpegSession
-import com.arthenica.ffmpegkit.ReturnCode
+import com.filippoorru.topout.database.AttemptEntity
 import com.filippoorru.topout.ui.Center
 import com.filippoorru.topout.ui.model.CutScreenModel
 import java.io.File
@@ -49,23 +47,16 @@ import java.text.DecimalFormat
 @OptIn(UnstableApi::class)
 @Composable
 fun CutScreen(navController: NavHostController, routeVisitId: String, attemptId: String) {
-    fun cutFile(path: String, newPath: String, startTimestamp: Int, endTimestamp: Int) {
-        val session: FFmpegSession = FFmpegKit.execute("-y -i $path -ss $startTimestamp -to $endTimestamp -c copy $newPath")
-        when (session.returnCode.value) {
-            ReturnCode.SUCCESS -> println("Cutting successful")
-            ReturnCode.CANCEL -> println("Cutting cancelled")
-            else -> println("Cutting failed")
-        }
-    }
-
     val viewModel = remember {
         CutScreenModel(routeVisitId, attemptId)
     }
 
     val routeVisit by viewModel.routeVisit.collectAsState(initial = null)
-    val attempt by viewModel.attempt.collectAsState(initial = null)
-
     val visit = routeVisit
+
+    val attemptState: AttemptEntity? by viewModel.attempt.collectAsState(initial = null)
+    val attempt = attemptState
+
     val recording = visit?.recording
     val fileExists: Boolean = remember(recording?.filePath) { recording?.filePath?.let { File(it).exists() } == true }
 
@@ -85,9 +76,9 @@ fun CutScreen(navController: NavHostController, routeVisitId: String, attemptId:
         Box(
             Modifier.padding(padding),
         ) {
-            if (visit == null) {
+            if (visit == null || attempt == null) {
                 Center {
-                    Text("Visit not found")
+                    Text("Something went wrong")
                 }
 
             } else if (!fileExists) {
@@ -136,8 +127,6 @@ fun CutScreen(navController: NavHostController, routeVisitId: String, attemptId:
                 Column(
                     Modifier.fillMaxSize(),
                 ) {
-                    Text("Cutting ${visit.id}", Modifier.padding(16.dp))
-
                     AndroidView(
                         factory = {
                             playerView
@@ -154,7 +143,8 @@ fun CutScreen(navController: NavHostController, routeVisitId: String, attemptId:
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        // TODO seek bar
+                        // TODO custom seek bar
+
                         Row(
                             Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -212,9 +202,13 @@ fun CutScreen(navController: NavHostController, routeVisitId: String, attemptId:
                                     Text("Cancel")
                                 }
 
-                                Button(onClick = {
-                                    cutFile(recording.filePath, recording.filePath, 0, 1000)
-                                }) {
+                                Button(
+                                    onClick = {
+                                        viewModel.cut(attempt, cutStart.value!!, cutEnd.value!!)
+                                        navController.popBackStack()
+                                    },
+                                    enabled = cutStart.value != null && cutEnd.value != null
+                                ) {
                                     Text("Save")
                                 }
 
