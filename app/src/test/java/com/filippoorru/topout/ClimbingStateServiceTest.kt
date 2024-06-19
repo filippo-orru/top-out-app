@@ -34,7 +34,7 @@ class ClimbingStateServiceTest {
 
         assertEquals(
             listOf(
-                Attempt(1000L, 11200L),
+                Attempt(5000L, 11600L),
             ),
             history
         )

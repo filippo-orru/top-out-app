@@ -20,40 +20,45 @@ class ClimbingStateService {
 
         val attempts = mutableListOf<Attempt>()
 
-        var first = ClimbingStateHistoryItem(climbing = false, startTimestamp)
-        var last: ClimbingStateHistoryItem? = null
+        var attemptStart: Long? = null
 
-        val history = climbingStateHistory +
-                // Make sure to process the last attempt if the history ends with a climbing state
-                ClimbingStateHistoryItem(climbing = false, endTimestamp)
+        var flickerStart: ClimbingStateHistoryItem? = null
+        var flickerLast: ClimbingStateHistoryItem? = null
 
-        for (climb in history) {
-            if (
-                last != null &&
-                climb.timestamp - last.timestamp > minDuration &&
-                climb.climbing != first.climbing
+        for (now in climbingStateHistory) {
+            if (flickerStart == null) {
+                flickerStart = now
+            } else if (
+                flickerLast != null &&
+                now.timestamp - flickerLast.timestamp > minDuration
             ) {
-                if (first.climbing) {
-                    val timestamp = if (first.timestamp == startTimestamp) {
-                        first.timestamp
-                    } else {
-                        // Average, but closer to the first timestamp
-                        listOf(first.timestamp, first.timestamp, last.timestamp).average().toLong()
-                    }
-
+                // Save start or end of attempt
+                if (attemptStart == null && flickerLast.climbing) {
+                    attemptStart = flickerStart.timestamp
+                } else if (attemptStart != null && !flickerLast.climbing) {
                     attempts.add(
                         Attempt(
-                            startMs = timestamp - startTimestamp,
-                            endMs = climb.timestamp - startTimestamp
+                            startMs = attemptStart - startTimestamp,
+                            endMs = flickerLast.timestamp - startTimestamp
                         )
                     )
                 }
 
-                first = climb
-                last = null
+                flickerStart = now
+                flickerLast = null
             } else {
-                last = climb
+                // Flickering
+                flickerLast = now
             }
+        }
+
+        if (attemptStart != null && flickerLast?.climbing == false) {
+            attempts.add(
+                Attempt(
+                    startMs = attemptStart - startTimestamp,
+                    endMs = flickerLast.timestamp - startTimestamp
+                )
+            )
         }
 
         return attempts.toList()
