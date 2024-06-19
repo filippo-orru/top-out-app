@@ -61,11 +61,14 @@ class PoseDetectorService(
             }
         }
 
-        result.landmarks().firstOrNull()?.let { person ->
+        val person = result.landmarks().firstOrNull()
+        if (person != null) {
             person.forEachIndexed { index, landmark ->
                 val existingFilter = filteredLandmarks.putIfAbsent(index, FilteredLandmark(landmark))
                 existingFilter?.add(landmark)
             }
+        } else {
+            filteredLandmarks.clear()
         }
 
         durations.add(duration)
@@ -88,9 +91,9 @@ class PoseDetectorService(
         fun Pair<Double, Double>.getSurroundingTrackingPoints(): List<Pair<Double, Double>> {
             val distance = 0.055
             val aspect = 4 / 3.0 // TODO get from actual image aspect ratio
-            return listOf(0.3, 0.45, 0.65, 0.7).map { angle ->
-                val dx = cos(angle * Math.PI * 2) * distance * aspect
-                val dy = sin(angle * Math.PI * 2) * distance
+            return listOf(0.3, 0.4, 0.5, 0.6, 0.7).map { angle ->
+                val dx = cos(angle * Math.PI * 2) * distance
+                val dy = sin(angle * Math.PI * 2) * distance * aspect
                 val x = this.first - dx
                 val y = this.second + dy
                 x to y
@@ -109,7 +112,7 @@ object Landmark {
 
 
 class FilteredLandmark(
-    initial: NormalizedLandmark
+    initial: NormalizedLandmark,
 ) {
     private val frequency = 10.0
     private val minCutoff = 1.0

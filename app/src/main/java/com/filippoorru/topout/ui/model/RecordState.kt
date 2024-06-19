@@ -75,22 +75,19 @@ class RecordViewModel(
 
 
     private fun updatePoseState() {
-        _poseState.value = poseDetectorService.landmarks?.let { person ->
-            val feet = PoseDetectorService.getFeet(person)
-            val feetWithTrackerPositions = feet
-                .associateWith { foot ->
-                    foot.getSurroundingTrackingPoints().map { (x, y) ->
-                        TrackingPoint(x, y, isInMask = segmentationState.value?.containsPoint(x, y) == true)
-                    }
+        _poseState.value = poseDetectorService.landmarks?.let { person -> PoseDetectorService.getFeet(person) }?.let { feetPairs ->
+            val feetWithTrackerPositions = feetPairs.associateWith { foot ->
+                foot.getSurroundingTrackingPoints().map { (x, y) ->
+                    TrackingPoint(x, y, isInMask = segmentationState.value?.containsPoint(x, y) == true)
                 }
+            }
 
-            val trackerPositions = feetWithTrackerPositions.values.flatten()
             PoseState(
                 feet = feetWithTrackerPositions.map { (foot, trackerPositions) ->
                     TrackingPoint(foot.first, foot.second, isInMask = trackerPositions.isInMask)
                 },
-                feetTrackingPoints = trackerPositions,
-                averageDuration = poseDetectorService.averageDuration,
+                feetTrackingPoints = feetWithTrackerPositions.values.flatten(),
+                poseDetectorService.averageDuration
             )
         }
 
@@ -105,15 +102,17 @@ class RecordViewModel(
     }
 
     private fun updateClimbingState() {
-        val pose = poseState.value
-        val climbingState: ClimbingState = if (pose == null) {
+        val trackingPoints = poseState.value?.feetTrackingPoints
+
+        val climbingState: ClimbingState = if (trackingPoints == null) {
             ClimbingState.NotDetected
-        } else if (pose.feetTrackingPoints.isInMask) {
+        } else if (trackingPoints.isInMask) {
             // Most feet tracking points are on the ground
             ClimbingState.Idle
         } else {
             ClimbingState.Climbing
         }
+
         _climbingState.value = climbingState
         climbingStateService.onNewClimbingState(climbingState, System.currentTimeMillis())
     }

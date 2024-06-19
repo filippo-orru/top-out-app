@@ -2,22 +2,21 @@ package com.filippoorru.topout.ui.screens
 
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import androidx.camera.core.AspectRatio
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
-import androidx.camera.core.resolutionselector.AspectRatioStrategy
-import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.UseCaseGroup
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.Arrangement.Center
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -40,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.navigation.NavOptions
 import com.filippoorru.topout.ui.Routes
 import com.filippoorru.topout.ui.icons.RecordIcon
 import com.filippoorru.topout.ui.icons.RecordStopIcon
@@ -67,6 +67,10 @@ fun RecordScreen(navController: NavController) {
 
     val previewView = remember {
         PreviewView(context).apply {
+//            layoutParams = ViewGroup.LayoutParams(
+//                ViewGroup.LayoutParams.MATCH_PARENT,
+//                0
+//            )
             scaleType = PreviewView.ScaleType.FIT_CENTER
         }
     }
@@ -82,184 +86,214 @@ fun RecordScreen(navController: NavController) {
         val cameraProvider = getCameraProvider(context)
         cameraProvider.unbindAll()
         val preview = Preview.Builder()
-            .setResolutionSelector(
-                ResolutionSelector.Builder()
-                    .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
-                    .build()
-            )
+            .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+//            .setResolutionSelector(
+//                ResolutionSelector.Builder()
+//                    .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
+//                    .build()
+//            )
             .build()
         val cameraSelector = CameraSelector.Builder()
             .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-            .addCameraFilter { cameraInfos ->
-                val wideAngle = cameraInfos.firstOrNull { it.intrinsicZoomRatio < 1.0 }
-                if (wideAngle != null) {
-                    listOf(wideAngle)
-                } else {
-                    // If there is no wide angle camera, return all cameras
-                    listOf(*cameraInfos.toTypedArray()) // Not sure why we need to create a new array
-                }
-            }
+//            .addCameraFilter { cameraInfos ->
+//                val wideAngle = cameraInfos.firstOrNull { it.intrinsicZoomRatio < 1.0 }
+//                if (wideAngle != null) {
+//                    listOf(wideAngle)
+//                } else {
+//                    // If there is no wide angle camera, return all cameras
+//                    listOf(*cameraInfos.toTypedArray()) // Not sure why we need to create a new array
+//                }
+//            }
             .build()
+
+        val useCaseGroup = UseCaseGroup.Builder()
+            .setViewPort(previewView.viewPort!!)
+            .addUseCase(preview)
+
+        for (useCase in viewModel.useCases) {
+            useCaseGroup.addUseCase(useCase)
+        }
 
         cameraProvider.bindToLifecycle(
             lifecycleOwner,
             cameraSelector,
-            preview,
-            *viewModel.useCases,
+            useCaseGroup.build()
         )
         preview.setSurfaceProvider(previewView.surfaceProvider)
     }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        topBar = { TopOutAppBar(title = "TopOut") },
-        contentColor = Color(0xFF121212),
+        contentColor = Color.White,
+        containerColor = Color.Black,
     ) { padding ->
-        Surface(
-            modifier = Modifier.padding(padding),
-            color = Color.Black,
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Column(
+            Box(
                 modifier = Modifier
-                    .fillMaxSize(),
-                verticalArrangement = Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
+                    .fillMaxWidth()
+                    .weight(1f),
             ) {
-                Box(
+                AndroidView(
+                    factory = { previewView },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(IntrinsicSize.Max),
+                        .fillMaxSize()
+                )
+
+                Surface(
+                    modifier = Modifier
+                        .matchParentSize(),
+                    color = Color.Black.copy(alpha = 0.15f),
                 ) {
-                    AndroidView(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(3f / 4f),
-                        factory = { previewView }
-                    )
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val height = size.height
+                        val width = size.width
 
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .align(Alignment.Center),
-                        color = Color.Black.copy(alpha = 0.15f),
-                    ) {
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            val height = size.height
-                            val width = size.width
+                        segmentationState?.let { state ->
+                            val byteArray = state.mask
+                            val pixels = IntArray(byteArray.size)
+                            for (i in pixels.indices) {
+                                // TODO can this be optimized?
+                                val byte = byteArray[i]
+                                val color: Int =
+                                    if (byte != zero) android.graphics.Color.TRANSPARENT else android.graphics.Color.RED
+                                pixels[i] = color
+                            }
 
-                            segmentationState?.let { state ->
-                                val byteArray = state.mask
-                                val pixels = IntArray(byteArray.size)
-                                for (i in pixels.indices) {
-                                    // TODO can this be optimized?
-                                    val byte = byteArray[i]
-                                    val color: Int =
-                                        if (byte != zero) android.graphics.Color.TRANSPARENT else android.graphics.Color.RED
-                                    pixels[i] = color
-                                }
+                            val imgWidth = state.width
+                            val imgHeight = state.height
 
-                                val imgWidth = state.width
-                                val imgHeight = state.height
+                            drawImage(
+                                Bitmap.createScaledBitmap(
+                                    Bitmap.createBitmap(
+                                        Bitmap.createBitmap(pixels, imgWidth, imgHeight, Bitmap.Config.ARGB_8888),
+                                        0, 0, imgWidth, imgHeight, Matrix().apply { postRotate(90f) }, true
+                                    ),
+                                    width.toInt(), height.toInt(), true
+                                ).asImageBitmap(),
+                                alpha = 0.33f,
+                            )
 
-                                drawImage(
-                                    Bitmap.createScaledBitmap(
-                                        Bitmap.createBitmap(
-                                            Bitmap.createBitmap(pixels, imgWidth, imgHeight, Bitmap.Config.ARGB_8888),
-                                            0, 0, imgWidth, imgHeight, Matrix().apply { postRotate(90f) }, true
-                                        ),
-                                        width.toInt(), height.toInt(), true
-                                    ).asImageBitmap(),
-                                    alpha = 0.33f,
+                            // Draw the segmentation points
+                            viewModel.segmentationPoints.forEach { (x, y) ->
+                                drawCircle(
+                                    color = Color.White,
+                                    center = Offset(x * width, y * height),
+                                    radius = 7f
                                 )
-
-                                // Draw the segmentation points
-                                viewModel.segmentationPoints.forEach { (x, y) ->
-                                    drawCircle(
-                                        color = Color.White,
-                                        center = Offset(x * width, y * height),
-                                        radius = 7f
-                                    )
-                                    drawCircle(
-                                        color = Color.Blue,
-                                        center = Offset(x * width, y * height),
-                                        radius = 5f
-                                    )
-                                }
-                            }
-
-                            poseState?.let { state ->
-                                state.feet.forEach { foot ->
-                                    val (x, y) = foot
-                                    val center = Offset((1 - y.toFloat()) * size.width, x.toFloat() * size.height)
-                                    // TODO function to transform landmark position into canvas position and back
-
-                                    if (!foot.isInMask) {
-                                        val arcRadius = 10f
-                                        drawArc(
-                                            color = Color.White,
-                                            startAngle = 0f,
-                                            sweepAngle = 360f,
-                                            useCenter = true,
-                                            topLeft = center - Offset(arcRadius, arcRadius),
-                                            size = Size(2 * arcRadius, 2 * arcRadius)
-                                        )
-                                    }
-
-                                    drawCircle(
-                                        color = Color.White,
-                                        center = center,
-                                        radius = 10f
-                                    )
-                                    drawCircle(
-                                        color = Color.Green,
-                                        center = center,
-                                        radius = 7f
-                                    )
-                                }
+                                drawCircle(
+                                    color = Color.Blue,
+                                    center = Offset(x * width, y * height),
+                                    radius = 5f
+                                )
                             }
                         }
 
+                        poseState?.let { state ->
+                            state.feetTrackingPoints.forEach { point ->
+                                val (x, y) = point
+                                val center = Offset((1 - y.toFloat()) * size.width, x.toFloat() * size.height)
+                                // TODO function to transform landmark position into canvas position and back
+
+                                if (point.isInMask) {
+                                    val arcRadius = 15f
+                                    drawArc(
+                                        color = Color.White,
+                                        startAngle = 0f,
+                                        sweepAngle = 360f,
+                                        useCenter = true,
+                                        topLeft = center - Offset(arcRadius, arcRadius),
+                                        size = Size(2 * arcRadius, 2 * arcRadius)
+                                    )
+                                }
+
+                                drawCircle(
+                                    color = Color.White,
+                                    center = center,
+                                    radius = 10f
+                                )
+                                drawCircle(
+                                    color = Color.Blue,
+                                    center = center,
+                                    radius = 7f
+                                )
+                            }
+
+                            state.feet.forEach { foot ->
+                                val (x, y) = foot
+                                val center = Offset((1 - y.toFloat()) * size.width, x.toFloat() * size.height)
+                                // TODO function to transform landmark position into canvas position and back
+
+//                                    if (!foot.isInMask) {
+//                                        val arcRadius = 10f
+//                                        drawArc(
+//                                            color = Color.White,
+//                                            startAngle = 0f,
+//                                            sweepAngle = 360f,
+//                                            useCenter = true,
+//                                            topLeft = center - Offset(arcRadius, arcRadius),
+//                                            size = Size(2 * arcRadius, 2 * arcRadius)
+//                                        )
+//                                    }
+
+                                drawCircle(
+                                    color = Color.White,
+                                    center = center,
+                                    radius = 10f
+                                )
+                                drawCircle(
+                                    color = Color.Green,
+                                    center = center,
+                                    radius = 7f
+                                )
+                            }
+                        }
                     }
+
                 }
+            }
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Center,
-                ) {
-                    when (climbingState) {
-                        ClimbingState.NotDetected -> {
-                            Text(
-                                "...",
-                                color = Color.White
-                            )
-                        }
-
-                        ClimbingState.Idle -> {
-                            Text(
-                                "...",
-                                color = Color.White
-                            )
-                        }
-
-                        ClimbingState.Climbing -> {
-                            Text(
-                                "🔴 Climbing 🔴",
-                                color = Color.White
-                            )
-                        }
-
+            Box(Modifier.padding(16.dp)) {
+                when (climbingState) {
+                    ClimbingState.NotDetected -> {
+                        Text(
+                            "...",
+                            color = Color.White
+                        )
                     }
-                }
 
+                    ClimbingState.Idle -> {
+                        Text(
+                            "...",
+                            color = Color.White
+                        )
+                    }
+
+                    ClimbingState.Climbing -> {
+                        Text(
+                            "🔴 Climbing 🔴",
+                            color = Color.White
+                        )
+                    }
+
+                }
+            }
+
+            Box(Modifier.padding(bottom = 64.dp)) {
                 IconButton(
                     onClick = {
                         when (recordingState) {
                             RecordingState.NotRecording -> viewModel.startRecording()
                             is RecordingState.Recording -> {
                                 viewModel.stopRecording()
-                                navController.navigate(Routes.ViewRouteVisit.build(viewModel.routeVisitId))
+                                navController.navigate(
+                                    Routes.ViewRouteVisit.build(viewModel.routeVisitId),
+                                    NavOptions.Builder().setPopUpTo(Routes.Main.route, inclusive = false).build()
+                                )
                             }
                         }
                     },
@@ -272,10 +306,14 @@ fun RecordScreen(navController: NavController) {
                         is RecordingState.Recording -> RecordStopIcon()
                     }
                 }
-
-
             }
         }
 
+        IconButton(
+            onClick = { navController.popBackStack() },
+            Modifier.absoluteOffset(x = 16.dp, y = 16.dp)
+        ) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+        }
     }
 }
