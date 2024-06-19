@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,12 +40,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.filippoorru.topout.ui.Center
 import com.filippoorru.topout.ui.Routes
 import com.filippoorru.topout.ui.createVideoThumbnail
 import com.filippoorru.topout.ui.icons.ClimberIcon
@@ -96,7 +99,9 @@ fun MainScreen(
             val attempts by viewModel.attempts.collectAsState()
 
             if (visits == null) {
-                CircularProgressIndicator()
+                Center {
+                    CircularProgressIndicator()
+                }
 
             } else {
                 if (visits.isEmpty()) {
@@ -169,31 +174,32 @@ fun MainScreen(
                                                         Modifier.fillMaxSize(),
                                                         contentScale = ContentScale.Crop
                                                     )
-                                                    Surface(
-                                                        Modifier
-                                                            .width(64.dp)
-                                                            .height(64.dp)
-                                                            .align(Alignment.Center),
-                                                        shape = CircleShape,
-                                                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.33f),
-                                                    ) {}
+                                                }
+
+                                                Surface(
+                                                    Modifier
+                                                        .width(64.dp)
+                                                        .height(64.dp)
+                                                        .align(Alignment.Center),
+                                                    shape = CircleShape,
+                                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+                                                ) {}
+
+                                                if (thumbnail != null) {
                                                     Text(
                                                         attempts.count { it.routeVisitId == routeVisit.id }.toString(),
                                                         Modifier
-                                                            .align(Alignment.Center)
-                                                            .scale(1.3f),
-                                                        color = MaterialTheme.colorScheme.onPrimary,
+                                                            .align(Alignment.Center),
+                                                        fontSize = 24.sp,
+                                                        color = MaterialTheme.colorScheme.primary,
                                                     )
                                                 } else {
-                                                    Box(
-                                                        contentAlignment = Alignment.Center,
-                                                    ) {
-                                                        Text(
-                                                            "Thumbnail not available",
-                                                            style = MaterialTheme.typography.labelMedium,
-                                                            color = MaterialTheme.colorScheme.onPrimary,
-                                                        )
-                                                    }
+                                                    Icon(
+                                                        Icons.Outlined.Warning,
+                                                        contentDescription = "Thumbnail not available",
+                                                        Modifier
+                                                            .align(Alignment.Center)
+                                                    )
                                                 }
                                             }
                                         }
@@ -228,6 +234,7 @@ fun MainScreen(
 fun TopOutAppBar(
     navigateBack: (() -> Unit)? = null,
     title: String = "TopOut",
+    actions: @Composable RowScope.() -> Unit = {},
 ) {
     TopAppBar(
         title = { Text(title) },
@@ -244,6 +251,7 @@ fun TopOutAppBar(
                 }
             }
         },
+        actions = actions
     )
 }
 

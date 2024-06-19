@@ -16,7 +16,6 @@ object Database {
 
     fun init(context: Context) {
         i = Room.databaseBuilder(context, AppDatabase::class.java, "app-database")
-            .fallbackToDestructiveMigration()
             .build()
     }
 }
@@ -45,6 +44,9 @@ interface RouteVisitsCollection {
 
     @Query("SELECT * FROM routeVisits")
     fun getAll(): Flow<List<RouteVisitEntity>>
+
+    @Query("DELETE FROM routeVisits WHERE id = :routeVisitId")
+    suspend fun delete(routeVisitId: String)
 }
 
 @Dao

@@ -17,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -36,7 +38,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.ClippingMediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.ui.PlayerControlView
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavHostController
@@ -45,6 +50,7 @@ import com.filippoorru.topout.ui.Routes
 import com.filippoorru.topout.ui.model.ViewAttemptModel
 import java.io.File
 
+
 @OptIn(UnstableApi::class)
 @Composable
 fun ViewAttemptScreen(navController: NavHostController, routeVisitId: String, attemptId: String) {
@@ -52,10 +58,12 @@ fun ViewAttemptScreen(navController: NavHostController, routeVisitId: String, at
         ViewAttemptModel(routeVisitId, attemptId)
     }
 
-    val routeVisit by viewModel.routeVisit.collectAsState(initial = null)
-    val attempt by viewModel.attempt.collectAsState(initial = null)
+    val routeVisitState by viewModel.routeVisit.collectAsState(initial = null)
+    val visit = routeVisitState
 
-    val visit = routeVisit
+    val attemptState by viewModel.attempt.collectAsState(initial = null)
+    val attempt = attemptState
+
     val recording = visit?.recording
     val fileExists: Boolean = remember(recording?.filePath) { recording?.filePath?.let { File(it).exists() } == true }
 
@@ -79,7 +87,7 @@ fun ViewAttemptScreen(navController: NavHostController, routeVisitId: String, at
         Box(
             Modifier.padding(padding),
         ) {
-            if (visit == null) {
+            if (visit == null || attempt == null) {
                 Center {
                     Text("Visit not found")
                 }
@@ -92,11 +100,51 @@ fun ViewAttemptScreen(navController: NavHostController, routeVisitId: String, at
             } else {
                 recording!! // Safe to unwrap here because fileExists
 
+                val showDeleteDialog = remember { mutableStateOf(false) }
+                if (showDeleteDialog.value) {
+                    AlertDialog(
+                        onDismissRequest = {
+                            showDeleteDialog.value = false
+                        },
+                        text = {
+                            Text("Are you sure you want to delete this attempt?\nThe recording will not be deleted.")
+                        },
+                        confirmButton = {
+                            Button(onClick = {
+                                showDeleteDialog.value = false
+                                viewModel.delete()
+                                navController.popBackStack()
+                            }) {
+                                Text("Delete")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = {
+                                showDeleteDialog.value = false
+                            }) {
+                                Text("Cancel")
+                            }
+                        }
+                    )
+                }
+
                 val context = LocalContext.current
 
                 val exoPlayer = remember {
                     ExoPlayer.Builder(context).build().apply {
-                        setMediaItem(MediaItem.fromUri(recording.filePath))
+                        val dataSourceFactory = DefaultDataSource.Factory(context)
+
+                        val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory)
+                            .createMediaSource(MediaItem.fromUri(recording.filePath))
+
+                        setMediaSource(
+                            ClippingMediaSource(
+                                mediaSource,
+                                attempt.partOfRouteVisitRecording.startMs.coerceAtLeast(0) * 1000L,
+                                attempt.partOfRouteVisitRecording.endMs.coerceAtLeast(0) * 1000L
+                            )
+                        )
+                        repeatMode = ExoPlayer.REPEAT_MODE_ONE
                         prepare()
                     }
                 }
@@ -106,7 +154,6 @@ fun ViewAttemptScreen(navController: NavHostController, routeVisitId: String, at
                     }
                 }
 
-                // TODO only play attempt time range
                 val playerView = remember {
                     PlayerView(context).apply {
                         setShowSubtitleButton(false)
@@ -157,9 +204,10 @@ fun ViewAttemptScreen(navController: NavHostController, routeVisitId: String, at
                                 }
                             }
 
+
+
                             TextButton(onClick = {
-                                viewModel.delete()
-                                navController.popBackStack()
+                                showDeleteDialog.value = true
                             }) {
                                 Column(
                                     horizontalAlignment = CenterHorizontally,

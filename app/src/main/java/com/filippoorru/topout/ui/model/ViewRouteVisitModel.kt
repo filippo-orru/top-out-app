@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.filippoorru.topout.database.AttemptEntity
 import com.filippoorru.topout.database.Database
 import com.filippoorru.topout.database.PartOfRouteVisitRecording
+import com.filippoorru.topout.database.RouteVisitEntity
 import kotlinx.coroutines.launch
+import java.io.File
 
 class ViewRouteVisitModel(
     val routeVisitId: String,
@@ -28,5 +30,17 @@ class ViewRouteVisitModel(
             )
         }
         return id
+    }
+
+    fun delete(routeVisit: RouteVisitEntity) {
+        viewModelScope.launch {
+            try {
+                File(routeVisit.recording.filePath).delete()
+            } catch (e: Exception) {
+                // Failed to delete file, ignore
+                println("Failed to delete file: ${routeVisit.recording.filePath}")
+            }
+            Database.i.routeVisits().delete(routeVisitId)
+        }
     }
 }

@@ -1,7 +1,9 @@
 package com.filippoorru.topout.database
 
+import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "routeVisits")
@@ -21,19 +23,27 @@ class RouteVisitRecording(
     val filePath: String,
 )
 
-@Entity(tableName = "attempts")
+@Entity(
+    tableName = "attempts",
+    foreignKeys = [ForeignKey(
+        entity = RouteVisitEntity::class,
+        parentColumns = arrayOf("id"),
+        childColumns = arrayOf("routeVisitId"),
+        onDelete = ForeignKey.CASCADE
+    )]
+)
 data class AttemptEntity(
     @PrimaryKey
     val id: String,
 
-    //@Relation(parentColumn = "id", entityColumn = "routeVisitId")
+    @ColumnInfo(index = true)
     var routeVisitId: String,
 
 //    @Embedded
 //    val recording: AttemptRecording?,
 
     @Embedded
-    val partOfRouteVisitRecording: PartOfRouteVisitRecording?,
+    val partOfRouteVisitRecording: PartOfRouteVisitRecording,
 
 //    var result: String, // top / fall / ?
 )

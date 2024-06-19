@@ -109,10 +109,10 @@ class RecordViewModel(
         val climbingState: ClimbingState = if (pose == null) {
             ClimbingState.NotDetected
         } else if (pose.feetTrackingPoints.isInMask) {
-            // Most feet tracking points have left the ground
-            ClimbingState.Climbing
-        } else {
+            // Most feet tracking points are on the ground
             ClimbingState.Idle
+        } else {
+            ClimbingState.Climbing
         }
         _climbingState.value = climbingState
         climbingStateService.onNewClimbingState(climbingState, System.currentTimeMillis())
@@ -186,7 +186,8 @@ class RecordViewModel(
 
     private fun saveRouteVisit() {
         viewModelScope.launch {
-            val attempts = climbingStateService.getAttempts(recordingStartTimestamp)
+            val attempts = climbingStateService.getAttempts(recordingStartTimestamp, System.currentTimeMillis())
+            //println(attempts)
             Database.i.routeVisits().save(
                 RouteVisitEntity(
                     id = routeVisitId,

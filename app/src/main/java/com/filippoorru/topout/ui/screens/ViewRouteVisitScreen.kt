@@ -21,16 +21,22 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,20 +67,69 @@ fun ViewRouteVisitScreen(navController: NavHostController, routeVisitId: String)
         }
     val visit = routeVisit
 
+    val showConfirmDeleteDialog = remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopOutAppBar(
                 navigateBack = { navController.popBackStack() },
                 title = title,
+                actions = {
+                    if (visit != null) {
+                        IconButton(
+                            onClick = {
+                                showConfirmDeleteDialog.value = true
+                            }
+                        ) {
+                            Icon(Icons.Outlined.Delete, contentDescription = "Delete")
+                            // Confirm delete dialog
+                            if (showConfirmDeleteDialog.value) {
+                                AlertDialog(
+                                    onDismissRequest = {
+                                        showConfirmDeleteDialog.value = false
+                                    },
+                                    text = {
+                                        Text("Are you sure you want to delete this visit?")
+                                    },
+                                    confirmButton = {
+                                        Button(onClick = {
+                                            viewModel.delete(visit)
+                                            showConfirmDeleteDialog.value = false
+                                            navController.popBackStack(Routes.Main.route, inclusive = false)
+                                        }) {
+                                            Text("Delete")
+                                        }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = {
+                                            showConfirmDeleteDialog.value = false
+                                        }) {
+                                            Text("Cancel")
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             )
         },
     ) { padding ->
+
         Box(
             Modifier.padding(padding),
         ) {
             if (visit == null) {
                 Center {
-                    Text("Visit not found")
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Text("Not found")
+                        Button(onClick = { navController.popBackStack(Routes.Main.route, inclusive = false) }) {
+                            Text("Go back")
+                        }
+                    }
                 }
             } else {
                 Column(
@@ -121,30 +176,32 @@ fun ViewRouteVisitScreen(navController: NavHostController, routeVisitId: String)
                                             Modifier.fillMaxSize(),
                                             contentScale = ContentScale.Crop
                                         )
-                                        Surface(
-                                            Modifier
-                                                .width(64.dp)
-                                                .height(64.dp)
-                                                .align(Alignment.Center),
-                                            shape = CircleShape,
-                                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.33f),
-                                        ) {}
+                                    }
+                                    Surface(
+                                        Modifier
+                                            .width(64.dp)
+                                            .height(64.dp)
+                                            .align(Alignment.Center),
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+                                    ) {}
+
+                                    if (thumbnail != null) {
                                         Icon(
                                             Icons.Default.PlayArrow,
                                             contentDescription = null,
                                             Modifier
                                                 .align(Alignment.Center)
                                                 .scale(1.3f),
-                                            tint = MaterialTheme.colorScheme.onPrimary
+                                            tint = MaterialTheme.colorScheme.primary
                                         )
                                     } else {
-                                        Center {
-                                            Text(
-                                                "Thumbnail not available",
-                                                Modifier.fillMaxSize(),
-                                                style = MaterialTheme.typography.labelMedium,
-                                            )
-                                        }
+                                        Icon(
+                                            Icons.Outlined.Warning,
+                                            contentDescription = "Thumbnail not available",
+                                            Modifier
+                                                .align(Alignment.Center)
+                                        )
                                     }
                                 }
 

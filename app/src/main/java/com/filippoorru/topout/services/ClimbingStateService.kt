@@ -7,28 +7,33 @@ class ClimbingStateService {
     private val climbingStateHistory = mutableListOf<ClimbingStateHistoryItem>()
 
     fun onNewClimbingState(climbingState: ClimbingState, timestamp: Long) {
-        climbingStateHistory.add(ClimbingStateHistoryItem(climbingState, timestamp))
+        climbingStateHistory.add(
+            ClimbingStateHistoryItem(
+                climbing = climbingState == ClimbingState.Climbing,
+                timestamp
+            )
+        )
     }
 
-    fun getAttempts(startTimestamp: Long): List<Attempt> {
+    fun getAttempts(startTimestamp: Long, endTimestamp: Long): List<Attempt> {
         val minDuration = 1000L
 
         val attempts = mutableListOf<Attempt>()
 
-        var first = ClimbingStateHistoryItem(ClimbingState.Idle, startTimestamp)
+        var first = ClimbingStateHistoryItem(climbing = false, startTimestamp)
         var last: ClimbingStateHistoryItem? = null
 
         val history = climbingStateHistory +
-                ClimbingStateHistoryItem(
-                    ClimbingState.Idle,
-                    Long.MAX_VALUE
-                ) // Make sure to process the last attempt if the history ends with a climbing state
+                // Make sure to process the last attempt if the history ends with a climbing state
+                ClimbingStateHistoryItem(climbing = false, endTimestamp)
 
         for (climb in history) {
-            if (last == null) {
-                last = climb
-            } else if (climb.timestamp - last.timestamp > minDuration) {
-                if (last.climbingState == first.climbingState) {
+            if (
+                last != null &&
+                climb.timestamp - last.timestamp > minDuration &&
+                climb.climbing != first.climbing
+            ) {
+                if (first.climbing) {
                     val timestamp = if (first.timestamp == startTimestamp) {
                         first.timestamp
                     } else {
@@ -43,6 +48,7 @@ class ClimbingStateService {
                         )
                     )
                 }
+
                 first = climb
                 last = null
             } else {
@@ -54,7 +60,7 @@ class ClimbingStateService {
     }
 }
 
-class Attempt(
+data class Attempt(
     // Times are relative to the start of the route visit recording
     // Might need to be clamped to the actual recording duration
     val startMs: Long,
@@ -63,6 +69,6 @@ class Attempt(
 
 @JsonClass(generateAdapter = true)
 class ClimbingStateHistoryItem(
-    val climbingState: ClimbingState,
+    val climbing: Boolean,
     val timestamp: Long,
 )

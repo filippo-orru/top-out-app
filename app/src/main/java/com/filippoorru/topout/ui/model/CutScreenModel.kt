@@ -26,7 +26,7 @@ class CutScreenModel(
         viewModelScope.launch {
             Database.i.attempts().save(
                 attempt.copy(
-                    partOfRouteVisitRecording = attempt.partOfRouteVisitRecording?.copy(
+                    partOfRouteVisitRecording = attempt.partOfRouteVisitRecording.copy(
                         startMs = start,
                         endMs = end
                     )

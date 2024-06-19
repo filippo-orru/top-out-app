@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "86299a8df54117947dca24dbed289e71",
+    "identityHash": "83bf95198dcada5ddec726828658de27",
     "entities": [
       {
         "tableName": "routeVisits",
@@ -38,7 +38,7 @@
       },
       {
         "tableName": "attempts",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `routeVisitId` TEXT NOT NULL, `startMs` INTEGER, `endMs` INTEGER, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `routeVisitId` TEXT NOT NULL, `startMs` INTEGER NOT NULL, `endMs` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`routeVisitId`) REFERENCES `routeVisits`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -56,13 +56,13 @@
             "fieldPath": "partOfRouteVisitRecording.startMs",
             "columnName": "startMs",
             "affinity": "INTEGER",
-            "notNull": false
+            "notNull": true
           },
           {
             "fieldPath": "partOfRouteVisitRecording.endMs",
             "columnName": "endMs",
             "affinity": "INTEGER",
-            "notNull": false
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -71,14 +71,36 @@
             "id"
           ]
         },
-        "indices": [],
-        "foreignKeys": []
+        "indices": [
+          {
+            "name": "index_attempts_routeVisitId",
+            "unique": false,
+            "columnNames": [
+              "routeVisitId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_attempts_routeVisitId` ON `${TABLE_NAME}` (`routeVisitId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "routeVisits",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "routeVisitId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       }
     ],
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '86299a8df54117947dca24dbed289e71')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '83bf95198dcada5ddec726828658de27')"
     ]
   }
 }
