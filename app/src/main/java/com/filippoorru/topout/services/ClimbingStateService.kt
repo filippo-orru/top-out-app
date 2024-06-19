@@ -2,20 +2,34 @@ package com.filippoorru.topout.services
 
 import com.filippoorru.topout.ui.model.ClimbingState
 import com.squareup.moshi.JsonClass
+import com.squareup.moshi.Moshi
 
 class ClimbingStateService {
     private val climbingStateHistory = mutableListOf<ClimbingStateHistoryItem>()
 
     fun onNewClimbingState(climbingState: ClimbingState, timestamp: Long) {
+        val climbing = climbingState == ClimbingState.Climbing
+        if (climbingStateHistory.isNotEmpty() && climbingStateHistory.last().climbing == climbing) {
+            return
+        }
+
         climbingStateHistory.add(
             ClimbingStateHistoryItem(
-                climbing = climbingState == ClimbingState.Climbing,
+                climbing = climbing,
                 timestamp
             )
         )
     }
 
     fun getAttempts(startTimestamp: Long, endTimestamp: Long): List<Attempt> {
+        val moshi = Moshi.Builder().build()
+        val jsonAdapter = moshi.adapter<List<ClimbingStateHistoryItem>>(List::class.java)
+
+        println("climbingStateHistory")
+        println(
+            jsonAdapter.toJson(climbingStateHistory.toList())
+        )
+
         val minDuration = 1000L
 
         val attempts = mutableListOf<Attempt>()
@@ -61,10 +75,16 @@ class ClimbingStateService {
             )
         }
 
+        println("attempts")
+        println(
+            moshi.adapter<List<Attempt>>(List::class.java).toJson(attempts)
+        )
+
         return attempts.toList()
     }
 }
 
+@JsonClass(generateAdapter = true)
 data class Attempt(
     // Times are relative to the start of the route visit recording
     // Might need to be clamped to the actual recording duration

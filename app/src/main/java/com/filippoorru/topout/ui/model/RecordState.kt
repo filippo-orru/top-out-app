@@ -186,7 +186,7 @@ class RecordViewModel(
     private fun saveRouteVisit() {
         viewModelScope.launch {
             val attempts = climbingStateService.getAttempts(recordingStartTimestamp, System.currentTimeMillis())
-            //println(attempts)
+
             Database.i.routeVisits().save(
                 RouteVisitEntity(
                     id = routeVisitId,

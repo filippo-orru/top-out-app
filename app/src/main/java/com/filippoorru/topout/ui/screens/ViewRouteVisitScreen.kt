@@ -159,7 +159,7 @@ fun ViewRouteVisitScreen(navController: NavHostController, routeVisitId: String)
                                     createVideoThumbnail(
                                         File(visit.recording.filePath),
                                         Size(512, 512),
-                                        desiredTimestamp = attempt.partOfRouteVisitRecording?.startMs?.plus(1000),
+                                        desiredTimestamp = attempt.partOfRouteVisitRecording.startMs + 1000,
                                     )?.asImageBitmap()
                                 }
 
