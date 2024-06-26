@@ -22,6 +22,10 @@ class ClimbingStateService {
     }
 
     fun getAttempts(startTimestamp: Long, endTimestamp: Long): List<Attempt> {
+        if (climbingStateHistory.isEmpty()) {
+            return emptyList()
+        }
+
         val moshi = Moshi.Builder().build()
         val jsonAdapter = moshi.adapter<List<ClimbingStateHistoryItem>>(List::class.java)
 
@@ -36,19 +40,16 @@ class ClimbingStateService {
 
         var attemptStart: Long? = null
 
-        var flickerStart: ClimbingStateHistoryItem? = null
-        var flickerLast: ClimbingStateHistoryItem? = null
+        val flicker: MutableList<ClimbingStateHistoryItem> = mutableListOf()
 
         for (now in climbingStateHistory) {
-            if (flickerStart == null) {
-                flickerStart = now
-            } else if (
-                flickerLast != null &&
-                now.timestamp - flickerLast.timestamp > minDuration
-            ) {
+            val flickerLast = flicker.lastOrNull()
+            if (flickerLast == null || now.timestamp - flickerLast.timestamp < minDuration) {
+                flicker.add(now)
+            } else {
                 // Save start or end of attempt
                 if (attemptStart == null && flickerLast.climbing) {
-                    attemptStart = flickerStart.timestamp
+                    attemptStart = flicker.first().timestamp
                 } else if (attemptStart != null && !flickerLast.climbing) {
                     attempts.add(
                         Attempt(
@@ -58,19 +59,21 @@ class ClimbingStateService {
                     )
                 }
 
-                flickerStart = now
-                flickerLast = null
-            } else {
-                // Flickering
-                flickerLast = now
+                flicker.clear()
+                flicker.add(now)
             }
         }
 
-        if (attemptStart != null && flickerLast?.climbing == false) {
+        if (attemptStart != null) {
+            val end = if (flicker.last().climbing) {
+                endTimestamp
+            } else {
+                flicker.last().timestamp
+            }
             attempts.add(
                 Attempt(
                     startMs = attemptStart - startTimestamp,
-                    endMs = flickerLast.timestamp - startTimestamp
+                    endMs = end - startTimestamp // End of recording
                 )
             )
         }
@@ -80,7 +83,7 @@ class ClimbingStateService {
             moshi.adapter<List<Attempt>>(List::class.java).toJson(attempts)
         )
 
-        return attempts.toList()
+        return attempts
     }
 }
 

@@ -9,9 +9,35 @@ import com.squareup.moshi.Types
 import junit.framework.TestCase.assertEquals
 import org.junit.Test
 
-class ClimbingStateServiceTest {
+class ComputeAttemptsTest {
+    private fun getAttempts(
+        vararg list: Pair<ClimbingState, Long>,
+    ): List<Attempt> {
+        val service = ClimbingStateService()
+
+        list.forEach {
+            service.onNewClimbingState(it.first, it.second)
+        }
+
+        return service.getAttempts(0L, list.last().second)
+    }
+
     @Test
-    fun testClimbingStateHistory() {
+    fun simple() {
+        val attempts = getAttempts(
+            ClimbingState.Idle to 1000L,
+            ClimbingState.Climbing to 5000L,
+            ClimbingState.Idle to 10000L
+        )
+
+        assertEquals(
+            listOf(Attempt(5000L, 10000L)),
+            attempts
+        )
+    }
+
+    @Test
+    fun withFlicker() {
         val service = ClimbingStateService()
 
         // Initial idle
@@ -48,7 +74,7 @@ class ClimbingStateServiceTest {
     }
 
     @Test
-    fun testFromJson() {
+    fun checkJson() {
         val raw = """[
   {
     "climbing": false,

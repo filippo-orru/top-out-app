@@ -180,7 +180,10 @@ class RecordViewModel(
         recording?.stop() // File is automatically saved to MediaStore
         _recordingState.value = RecordingState.NotRecording
 
-        saveRouteVisit()
+        if (recordingStartTimestamp > 0L) {
+            // Only save if recording was started
+            saveRouteVisit()
+        }
     }
 
     private fun saveRouteVisit() {
