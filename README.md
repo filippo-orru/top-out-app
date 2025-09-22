@@ -1,74 +1,46 @@
-# TopOut - AI-Powered Climbing Analysis App
+# Top Out
 
-TopOut is an innovative Android application that uses computer vision and AI to analyze rock climbing performances. The app automatically detects climbing movements, records attempts, and provides detailed insights into your climbing sessions.
+Recording yourself while bouldering is a great way to spot mistakes and improve your skills.
+But using your camera app to record is pretty annoying, so I created something better!
+
+## Pain Points
+
+If you've ever used your phone to record your climbs, you know these problems:
+
+1. **Overly long videos**
+
+    Climbers need to rest between attempts, which means the sections of actual climbing are buried in a long video that's just recording the wall. This **wastes a lot of time** when reviewing, and not to mention valuable phone storage.
+
+2. **Poor organization**
+
+    Let's say you climb every three days. Your gallery will be a mix of videos of your greatest moments, funniest fails, along with **hundreds** of other photos and videos. Finding a specific attempt can take a while, and manually organizating clips takes forever.
+
+## Top Out
+
+> **Features:**
+> - 🧗 Use Top Out to easily record your climbs
+> - 🧠 Detect when each attempt starts and ends by using AI
+> - 🚀 Saves time and storage
+> - 📋 Great overview of all attempts of past climbs
 
 ## Demo
 
 https://github.com/filippo-orru/top-out-app/raw/main/demo.mp4
 
-*Watch the demo video to see TopOut in action*
+*Demo of the app*
 
-## Features
+The home screen shows all your recordings, sorted by date. To create a recording, tap the plus button and position your phone on the ground. When you're ready, tap record! Later you can view all attempts done during the recording and edit them if necessary. By default, the app always saves the whole video, allowing you to edit *when exactly* an attempt starts and ends.
 
-### 🎯 **Automatic Climbing Detection**
-- Real-time pose detection using MediaPipe
-- Intelligent climbing state recognition (idle, climbing, not detected)
-- Automatic attempt segmentation based on movement patterns
+## How does it work?
+The app uses **two machine learning models** to detect when you start and stop climbing. First, a segmentation model recognizes the gym **floor**. Then a pose detection model finds the **location of your feet**. When your feet leave the floor area for a bit, the attempt starts. When you top the route or fall, your feet will be back in the floor area, and the attempt is stopped.
 
-### 📹 **Smart Video Recording**
-- HD video recording of climbing sessions
-- Automatic attempt detection and timestamping
-- Video thumbnails for easy session browsing
-- Individual attempt video clips with precise timing
+## Tech Details
 
-### 📊 **Performance Analysis**
-- Detailed tracking of climbing attempts
-- Timestamp analysis for each climbing sequence
-- Visual pose landmarks and movement tracking
-- Historical session data with Room database
+The Android app is written in Kotlin and uses [Jetpack Compose](https://developer.android.com/compose). Data about recordings and attempts is stored in a [Room database](https://developer.android.com/training/data-storage/room). 
 
-### 📱 **Modern UI**
-- Clean Material 3 design
-- Jetpack Compose interface
-- Intuitive navigation between sessions
-- Easy video playback and editing
-
-## Technical Overview
-
-TopOut leverages cutting-edge computer vision technology to provide accurate climbing analysis:
-
-- **MediaPipe**: Google's ML framework for pose detection and body segmentation
-- **Camera2 API**: High-quality video recording and real-time image processing
-- **Room Database**: Local storage for climbing sessions and attempts
-- **Jetpack Compose**: Modern Android UI toolkit
-- **ExoPlayer**: Smooth video playback and editing
-
-## Architecture
-
-The app follows clean architecture principles with the following key components:
-
-### Services
-- `PoseDetectorService`: Handles real-time pose detection using MediaPipe
-- `SegmentationService`: Processes body segmentation for enhanced accuracy
-- `ClimbingStateService`: Analyzes pose data to determine climbing states
-
-### Data Layer
-- `RouteVisitEntity`: Stores climbing session information
-- `AttemptEntity`: Tracks individual climbing attempts
-- `Database`: Room database for local data persistence
-
-### UI Layer
-- `MainScreen`: Session overview and navigation
-- `RecordScreen`: Live recording with real-time pose visualization
-- `ViewRouteVisitScreen`: Session playback and analysis
-- `CutScreen`: Video editing and attempt refinement
+The recording screen needs to interface with several components, including the camera feed, the [segmentation](https://ai.google.dev/edge/mediapipe/solutions/vision/interactive_segmenter) and [pose detection](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker) ML models, and a helper class that smoothes the pose data using a [one euro filter](https://gery.casiez.net/1euro/). Every time an image is received from the camera feed or one of the models returns a result, an immutable state update is sent via a stream. The view layer listens to the update stream and recomposes itself when the state changes.
 
 ## Installation
-
-### Prerequisites
-- Android device with API level 24+ (Android 7.0)
-- Camera permission for video recording
-- Minimum 2GB RAM recommended for optimal ML performance
 
 ### Build from Source
 
@@ -88,54 +60,12 @@ cd top-out-app
 ./gradlew installDebug
 ```
 
-## Usage
+### Prerequisites
+- Android device with API level 24+ (Android 7.0)
+- Camera permission for video recording
 
-### Starting a Recording Session
-1. Launch TopOut and grant camera permissions
-2. Tap the floating action button (➕) to start recording
-3. Position your device to capture the climbing area
-4. Begin climbing - the app will automatically detect your movements
+## Future
 
-### Viewing Sessions
-1. Return to the main screen to see all recorded sessions
-2. Tap on any session to view details
-3. Browse individual attempts with thumbnails
-4. Play back specific climbing sequences
+The app is currently not available to download.
 
-### Editing Attempts
-1. From a session view, tap on any attempt
-2. Use the video editor to refine start/end times
-3. Save your edits for accurate performance tracking
-
-## Key Technologies
-
-- **Kotlin**: Primary development language
-- **Android Jetpack**: Modern Android development components
-- **MediaPipe**: Real-time ML inference for pose detection
-- **CameraX**: Camera API for video recording
-- **Room**: Local database for data persistence
-- **Compose**: Declarative UI framework
-- **Material 3**: Modern design system
-
-## Performance Features
-
-- **Real-time Processing**: Live pose detection at camera frame rate
-- **Efficient Storage**: Optimized video compression and database queries
-- **Battery Optimization**: Smart processing to minimize power consumption
-- **Memory Management**: Careful handling of video and ML model memory
-
-## Data Privacy
-
-TopOut processes all video and pose data locally on your device. No climbing data is sent to external servers, ensuring complete privacy of your climbing sessions.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues and enhancement requests.
-
-## License
-
-This project is open source. Please check the LICENSE file for details.
-
----
-
-**Experience the future of climbing analysis with TopOut - where AI meets adventure!** 🧗‍♀️⛰️
+In the future, the app could be extended to include social features, such as a local leaderboard. It could match routes visually, by comparing the positions of relevant holds.
